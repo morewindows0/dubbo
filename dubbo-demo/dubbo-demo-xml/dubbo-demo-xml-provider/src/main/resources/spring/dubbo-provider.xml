@@ -22,9 +22,14 @@
        http://dubbo.apache.org/schema/dubbo http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
 
     <dubbo:application name="demo-provider"/>
-
-    <dubbo:registry address="zookeeper://127.0.0.1:2181"/>
-
+      
+    <dubbo:registry address="zookeeper://192.168.2.116:2181"/>
+    
+    <!--设置超时时间，不然测试环境无法连接到zookeeper-->
+    <dubbo:config-center>
+        <dubbo:parameter key="timeout" value="60000" />
+    </dubbo:config-center>
+    
     <dubbo:protocol name="dubbo"/>
 
     <bean id="demoService" class="org.apache.dubbo.demo.provider.DemoServiceImpl"/>

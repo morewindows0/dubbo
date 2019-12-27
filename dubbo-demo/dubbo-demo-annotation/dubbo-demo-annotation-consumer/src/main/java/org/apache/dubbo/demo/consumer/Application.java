@@ -18,11 +18,13 @@
  */
 package org.apache.dubbo.demo.consumer;
 
+import org.apache.dubbo.config.ConfigCenterConfig;
 import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.apache.dubbo.demo.DemoService;
 import org.apache.dubbo.demo.consumer.comp.DemoServiceComponent;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -45,6 +47,12 @@ public class Application {
     @PropertySource("classpath:/spring/dubbo-consumer.properties")
     @ComponentScan(value = {"org.apache.dubbo.demo.consumer.comp"})
     static class ConsumerConfiguration {
-
+        @Bean
+        public ConfigCenterConfig configCenterConfig() {
+            ConfigCenterConfig config = new ConfigCenterConfig();
+            // 修改配置中心连接时间，不然会出现连接超时的情况
+            config.setTimeout(90000L);
+            return config;
+        }
     }
 }

@@ -96,11 +96,16 @@ public abstract class AbstractConfig implements Serializable {
     private static final Pattern PATTERN_KEY = Pattern.compile("[*,\\-._0-9a-zA-Z]+");
 
     /**
+     * 新老版本的properties的key映射
+     * key:新版本的配置
+     * value：老版本的配置
      * The legacy properties container
      */
     private static final Map<String, String> LEGACY_PROPERTIES = new HashMap<String, String>();
 
     /**
+     * 配置类名的后缀
+     * 例如，ServiceConfig 后缀为 Config；ServiceBean 后缀为 Bean
      * The suffix container
      */
     private static final String[] SUFFIXES = new String[]{"Config", "Bean"};
@@ -125,9 +130,18 @@ public abstract class AbstractConfig implements Serializable {
     protected String id;
     protected String prefix;
 
+    /**
+     * 将键对应的值转换成目标值
+     * 应该是新老配置的差异
+     *
+     * @param key
+     * @param value
+     * @return
+     */
     private static String convertLegacyValue(String key, String value) {
         if (value != null && value.length() > 0) {
             if ("dubbo.service.max.retry.providers".equals(key)) {
+                // 最大重试次数 注意这里减1了
                 return String.valueOf(Integer.parseInt(value) - 1);
             } else if ("dubbo.service.allow.no.provider".equals(key)) {
                 return String.valueOf(!Boolean.parseBoolean(value));
@@ -136,6 +150,11 @@ public abstract class AbstractConfig implements Serializable {
         return value;
     }
 
+    /**
+     * 获取类名对应的属性标签，例如，ServiceConfig 对应为 service 。
+     * @param cls
+     * @return
+     */
     private static String getTagName(Class<?> cls) {
         String tag = cls.getSimpleName();
         for (String suffix : SUFFIXES) {
@@ -195,9 +214,9 @@ public abstract class AbstractConfig implements Serializable {
                         throw new IllegalStateException(config.getClass().getSimpleName() + "." + key + " == null");
                     }
                 } else if ("getParameters".equals(name)
-                        && Modifier.isPublic(method.getModifiers())
-                        && method.getParameterTypes().length == 0
-                        && method.getReturnType() == Map.class) {
+                           && Modifier.isPublic(method.getModifiers())
+                           && method.getParameterTypes().length == 0
+                           && method.getReturnType() == Map.class) {
                     Map<String, String> map = (Map<String, String>) method.invoke(config, new Object[0]);
                     if (map != null && map.size() > 0) {
                         String pre = (prefix != null && prefix.length() > 0 ? prefix + "." : "");
@@ -299,7 +318,7 @@ public abstract class AbstractConfig implements Serializable {
     protected static void checkExtension(Class<?> type, String property, String value) {
         checkName(property, value);
         if (StringUtils.isNotEmpty(value)
-                && !ExtensionLoader.getExtensionLoader(type).hasExtension(value)) {
+            && !ExtensionLoader.getExtensionLoader(type).hasExtension(value)) {
             throw new IllegalStateException("No such extension " + value + " for " + property + "/" + type.getName());
         }
     }
@@ -382,7 +401,7 @@ public abstract class AbstractConfig implements Serializable {
             Matcher matcher = pattern.matcher(value);
             if (!matcher.matches()) {
                 throw new IllegalStateException("Invalid " + property + "=\"" + value + "\" contains illegal " +
-                        "character, only digit, letter, '-', '_' or '.' is legal.");
+                                                "character, only digit, letter, '-', '_' or '.' is legal.");
             }
         }
     }
@@ -440,10 +459,10 @@ public abstract class AbstractConfig implements Serializable {
         Method[] methods = annotationClass.getMethods();
         for (Method method : methods) {
             if (method.getDeclaringClass() != Object.class
-                    && method.getReturnType() != void.class
-                    && method.getParameterTypes().length == 0
-                    && Modifier.isPublic(method.getModifiers())
-                    && !Modifier.isStatic(method.getModifiers())) {
+                && method.getReturnType() != void.class
+                && method.getParameterTypes().length == 0
+                && Modifier.isPublic(method.getModifiers())
+                && !Modifier.isStatic(method.getModifiers())) {
                 try {
                     String property = method.getName();
                     if ("interfaceClass".equals(property) || "interfaceName".equals(property)) {
@@ -512,12 +531,12 @@ public abstract class AbstractConfig implements Serializable {
                         metaData.put(key, null);
                     }
                 } else if ("getParameters".equals(name)
-                        && Modifier.isPublic(method.getModifiers())
-                        && method.getParameterTypes().length == 0
-                        && method.getReturnType() == Map.class) {
+                           && Modifier.isPublic(method.getModifiers())
+                           && method.getParameterTypes().length == 0
+                           && method.getReturnType() == Map.class) {
                     Map<String, String> map = (Map<String, String>) method.invoke(this, new Object[0]);
                     if (map != null && map.size() > 0) {
-//                            String pre = (prefix != null && prefix.length() > 0 ? prefix + "." : "");
+                        //                            String pre = (prefix != null && prefix.length() > 0 ? prefix + "." : "");
                         for (Map.Entry<String, String> entry : map.entrySet()) {
                             metaData.put(entry.getKey().replace('-', '.'), entry.getValue());
                         }
@@ -568,8 +587,8 @@ public abstract class AbstractConfig implements Serializable {
                         }
                     } catch (NoSuchMethodException e) {
                         logger.info("Failed to override the property " + method.getName() + " in " +
-                                this.getClass().getSimpleName() +
-                                ", please make sure every property has getter/setter method provided.");
+                                    this.getClass().getSimpleName() +
+                                    ", please make sure every property has getter/setter method provided.");
                     }
                 }
             }

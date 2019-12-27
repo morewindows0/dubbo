@@ -94,6 +94,7 @@ import static org.apache.dubbo.common.utils.NetUtils.isInvalidLocalHost;
 import static org.apache.dubbo.common.utils.NetUtils.isInvalidPort;
 
 /**
+ * 服务提供者发布服务配置
  * ServiceConfig
  *
  * @export
@@ -130,6 +131,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private static final Map<String, Integer> RANDOM_PORT_MAP = new HashMap<String, Integer>();
 
     /**
+     * 延迟发布执行器
      * A delayed exposure service timer
      */
     private static final ScheduledExecutorService delayExportExecutor = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("DubboServiceDelayExporter", true));
@@ -366,15 +368,17 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     public synchronized void export() {
+        // 检查并更新配置
         checkAndUpdateSubConfigs();
-
+        // 是否应该暴露服务 主要在@Service上的export属性，默认为true
         if (!shouldExport()) {
             return;
         }
-
+        // 延迟发布服务
         if (shouldDelay()) {
             delayExportExecutor.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);
         } else {
+            // 发布服务
             doExport();
         }
     }

@@ -53,7 +53,7 @@ public class Application {
         public ConfigCenterConfig configCenterConfig() {
             ConfigCenterConfig config = new ConfigCenterConfig();
             // 修改配置中心连接时间，不然会出现连接超时的情况
-            config.setTimeout(Long.MAX_VALUE);
+            config.setTimeout(90000L);
             return config;
         }
     }

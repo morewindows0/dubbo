@@ -18,6 +18,7 @@
  */
 package org.apache.dubbo.demo.provider;
 
+import org.apache.dubbo.config.ConfigCenterConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 
@@ -44,8 +45,16 @@ public class Application {
         @Bean
         public RegistryConfig registryConfig() {
             RegistryConfig registryConfig = new RegistryConfig();
-            registryConfig.setAddress("multicast://224.5.6.7:1234");
+            registryConfig.setAddress("zookeeper://192.168.2.114:2181");
             return registryConfig;
+        }
+
+        @Bean
+        public ConfigCenterConfig configCenterConfig() {
+            ConfigCenterConfig config = new ConfigCenterConfig();
+            // 修改配置中心连接时间，不然会出现连接超时的情况
+            config.setTimeout(Long.MAX_VALUE);
+            return config;
         }
     }
 }

@@ -370,7 +370,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     public synchronized void export() {
         // 检查并更新配置
         checkAndUpdateSubConfigs();
-        // 是否应该暴露服务 主要在@Service上的export属性，默认为true
+        // 是否应该发布服务 主要在@Service上的export属性，默认为true
         if (!shouldExport()) {
             return;
         }
@@ -405,14 +405,18 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     protected synchronized void doExport() {
+        // 检查服务是否可以下线，如果已下线，则抛出异常
         if (unexported) {
             throw new IllegalStateException("The service " + interfaceClass.getName() + " has already unexported!");
         }
+        // 如果服务已经发布，则直接返回
         if (exported) {
             return;
         }
+        // 标记服务已发布
         exported = true;
-
+        
+        // 如果服务路径为空，则使用接口名称，默认使用interfaceName
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
@@ -453,21 +457,28 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // 加载所有配置的注册中心地址，组装成一个URL
         List<URL> registryURLs = loadRegistries(true);
         for (ProtocolConfig protocolConfig : protocols) {
+            // group 跟 version 组成一个 pathKey(serviceName)
             String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
             ProviderModel providerModel = new ProviderModel(pathKey, ref, interfaceClass);
+            // ApplicationModel 用来存储 ProviderModel ，发布的服务的元数据
             ApplicationModel.initProviderModel(pathKey, providerModel);
+            // 发布服务
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+        // 获取协议名称
         String name = protocolConfig.getName();
+        // 协议默认为dubbo
         if (StringUtils.isEmpty(name)) {
             name = DUBBO;
         }
 
+        // TODO: 2019/12/27 进行一些列配置的解析 
         Map<String, String> map = new HashMap<String, String>();
         map.put(SIDE_KEY, PROVIDER_SIDE);
 
@@ -561,6 +572,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         }
         // export service
+        // 获取当前服务要发布的目标ip和port
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);

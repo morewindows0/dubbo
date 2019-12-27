@@ -40,8 +40,9 @@ import java.util.Set;
 import static org.springframework.beans.factory.support.BeanDefinitionBuilder.rootBeanDefinition;
 
 /**
+ * 当使用@EnableDubbo注解的时候就会注入该来
  * Dubbo {@link DubboComponentScan} Bean Registrar
- *
+ * 
  * @see Service
  * @see DubboComponentScan
  * @see ImportBeanDefinitionRegistrar
@@ -55,7 +56,8 @@ public class DubboComponentScanRegistrar implements ImportBeanDefinitionRegistra
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 
         Set<String> packagesToScan = getPackagesToScan(importingClassMetadata);
-
+        
+        // 注入ServiceAnnotationBeanPostProcessor 非常重要，实现服务发布关键对象
         registerServiceAnnotationBeanPostProcessor(packagesToScan, registry);
 
         registerReferenceAnnotationBeanPostProcessor(registry);

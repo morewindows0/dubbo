@@ -36,6 +36,7 @@ public class MethodUtils {
                 && !"getClass".equals(name) && !"getObject".equals(name)
                 && Modifier.isPublic(method.getModifiers())
                 && method.getParameterTypes().length == 0
+                // 方法的返回值为基本类型
                 && ClassUtils.isPrimitive(method.getReturnType());
     }
 

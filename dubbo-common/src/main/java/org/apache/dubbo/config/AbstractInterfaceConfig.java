@@ -54,6 +54,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     /**
      * Local impl class name for the service interface
+     * 服务接口客户端本地代理类名，用于在客户端执行本地逻辑
      */
     protected String local;
 

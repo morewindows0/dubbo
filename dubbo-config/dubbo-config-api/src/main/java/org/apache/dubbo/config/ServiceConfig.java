@@ -100,6 +100,10 @@ import static org.apache.dubbo.rpc.Constants.SCOPE_REMOTE;
 import static org.apache.dubbo.rpc.Constants.TOKEN_KEY;
 import static org.apache.dubbo.rpc.cluster.Constants.EXPORT_KEY;
 
+/**
+ * 服务提供者暴露服务配置
+ * @param <T>
+ */
 public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     public static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
@@ -110,6 +114,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     private static final Map<String, Integer> RANDOM_PORT_MAP = new HashMap<String, Integer>();
 
     /**
+     * 延迟暴露执行器
      * A delayed exposure service timer
      */
     private static final ScheduledExecutorService DELAY_EXPORT_EXECUTOR = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("DubboServiceDelayExporter", true));
@@ -179,29 +184,38 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         dispatch(new ServiceConfigUnexportedEvent(this));
     }
 
+    /**
+     * 暴露服务
+     */
     public synchronized void export() {
+        // 是否应该暴露服务 主要在@Service上的export属性，默认为true
         if (!shouldExport()) {
             return;
         }
-
+        
+        // 启动器是否初始化
         if (bootstrap == null) {
             bootstrap = DubboBootstrap.getInstance();
             bootstrap.init();
         }
-
+        
+        // 进行校验工作
         checkAndUpdateSubConfigs();
 
         //init serviceMetadata
+        // 初始化serviceMetadata
         serviceMetadata.setVersion(version);
         serviceMetadata.setGroup(group);
         serviceMetadata.setDefaultGroup(group);
         serviceMetadata.setServiceType(getInterfaceClass());
         serviceMetadata.setServiceInterfaceName(getInterface());
         serviceMetadata.setTarget(getRef());
-
+        
+        // 延迟暴露
         if (shouldDelay()) {
             DELAY_EXPORT_EXECUTOR.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);
         } else {
+            // 立即暴露
             doExport();
         }
     }
@@ -273,14 +287,18 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
 
     protected synchronized void doExport() {
+        // 检查是否可以暴露，若可以，标记已经暴露。
         if (unexported) {
             throw new IllegalStateException("The service " + interfaceClass.getName() + " has already unexported!");
         }
+        // 如果服务已经暴露，则直接返回
         if (exported) {
             return;
         }
+        // 标记服务已暴露
         exported = true;
-
+        
+        // 如果服务路径为空，则使用接口名称
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }

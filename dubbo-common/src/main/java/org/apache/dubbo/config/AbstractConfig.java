@@ -35,6 +35,7 @@ import org.apache.dubbo.rpc.model.ApplicationModel;
 import org.apache.dubbo.rpc.model.ConsumerModel;
 
 import javax.annotation.PostConstruct;
+
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -59,16 +60,22 @@ public abstract class AbstractConfig implements Serializable {
     private static final long serialVersionUID = 4267533505537413570L;
 
     /**
+     * 新老版本的properties的key映射
+     * key:新版本的配置
+     * value：老版本的配置
      * The legacy properties container
      */
     private static final Map<String, String> LEGACY_PROPERTIES = new HashMap<String, String>();
 
     /**
+     * 配置类名的后缀
+     * 例如，ServiceConfig 后缀为 Config；ServiceBean 后缀为 Bean
      * The suffix container
      */
     private static final String[] SUFFIXES = new String[]{"Config", "Bean", "ConfigBase"};
 
     static {
+        // 静态代码块初始化dubbo的新老版本属性配置
         LEGACY_PROPERTIES.put("dubbo.protocol.name", "dubbo.service.protocol");
         LEGACY_PROPERTIES.put("dubbo.protocol.host", "dubbo.service.server.host");
         LEGACY_PROPERTIES.put("dubbo.protocol.port", "dubbo.service.server.port");
@@ -82,13 +89,25 @@ public abstract class AbstractConfig implements Serializable {
     /**
      * The config id
      */
+    /**
+     * 配置对象的编号
+     */
     protected String id;
     protected String prefix;
 
     protected final AtomicBoolean refreshed = new AtomicBoolean(false);
 
+    /**
+     * 将键对应的值转换成目标值
+     * 应该是新老配置的差异
+     *
+     * @param key
+     * @param value
+     * @return
+     */
     private static String convertLegacyValue(String key, String value) {
         if (value != null && value.length() > 0) {
+            // 最大重试次数 注意这里减1了，
             if ("dubbo.service.max.retry.providers".equals(key)) {
                 return String.valueOf(Integer.parseInt(value) - 1);
             } else if ("dubbo.service.allow.no.provider".equals(key)) {
@@ -98,6 +117,12 @@ public abstract class AbstractConfig implements Serializable {
         return value;
     }
 
+    /**
+     * 获取类名对应的属性标签，例如，ServiceConfig 对应为 service 。
+     *
+     * @param cls
+     * @return
+     */
     public static String getTagName(Class<?> cls) {
         String tag = cls.getSimpleName();
         for (String suffix : SUFFIXES) {
@@ -114,31 +139,43 @@ public abstract class AbstractConfig implements Serializable {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 将配置对象的属性，添加到参数集合
+     * parameters集合会用于URL.parameters中
+     */
     public static void appendParameters(Map<String, String> parameters, Object config, String prefix) {
         if (config == null) {
             return;
         }
+        // 获取方法集合
         Method[] methods = config.getClass().getMethods();
+        // 遍历方法集合
         for (Method method : methods) {
             try {
                 String name = method.getName();
+                // 如果方法为get方法
                 if (MethodUtils.isGetter(method)) {
                     Parameter parameter = method.getAnnotation(Parameter.class);
+                    // 如果返回值为Object类型或者排除( `@Parameter.exclue=true` )的配置项，则跳过
                     if (method.getReturnType() == Object.class || parameter != null && parameter.excluded()) {
                         continue;
                     }
+                    // 获取属性名
                     String key;
                     if (parameter != null && parameter.key().length() > 0) {
                         key = parameter.key();
                     } else {
                         key = calculatePropertyFromGetter(name);
                     }
+                    // 获得属性值
                     Object value = method.invoke(config);
                     String str = String.valueOf(value).trim();
                     if (value != null && str.length() > 0) {
+                        // 转义
                         if (parameter != null && parameter.escaped()) {
                             str = URL.encode(str);
                         }
+                        // 拼接
                         if (parameter != null && parameter.append()) {
                             String pre = parameters.get(key);
                             if (pre != null && pre.length() > 0) {
@@ -153,6 +190,7 @@ public abstract class AbstractConfig implements Serializable {
                         throw new IllegalStateException(config.getClass().getSimpleName() + "." + key + " == null");
                     }
                 } else if (isParametersGetter(method)) {
+                    // 通过反射获取返回值
                     Map<String, String> map = (Map<String, String>) method.invoke(config, new Object[0]);
                     parameters.putAll(convert(map, prefix));
                 }
@@ -358,10 +396,10 @@ public abstract class AbstractConfig implements Serializable {
         Method[] methods = annotationClass.getMethods();
         for (Method method : methods) {
             if (method.getDeclaringClass() != Object.class
-                    && method.getReturnType() != void.class
-                    && method.getParameterTypes().length == 0
-                    && Modifier.isPublic(method.getModifiers())
-                    && !Modifier.isStatic(method.getModifiers())) {
+                && method.getReturnType() != void.class
+                && method.getParameterTypes().length == 0
+                && Modifier.isPublic(method.getModifiers())
+                && !Modifier.isStatic(method.getModifiers())) {
                 try {
                     String property = method.getName();
                     if ("interfaceClass".equals(property) || "interfaceName".equals(property)) {
@@ -481,8 +519,8 @@ public abstract class AbstractConfig implements Serializable {
                         }
                     } catch (NoSuchMethodException e) {
                         logger.info("Failed to override the property " + method.getName() + " in " +
-                                this.getClass().getSimpleName() +
-                                ", please make sure every property has getter/setter method provided.");
+                                    this.getClass().getSimpleName() +
+                                    ", please make sure every property has getter/setter method provided.");
                     }
                 } else if (isParametersSetter(method)) {
                     String value = StringUtils.trim(compositeConfiguration.getString(extractPropertyName(getClass(), method)));

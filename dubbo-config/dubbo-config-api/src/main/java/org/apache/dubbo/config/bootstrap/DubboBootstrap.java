@@ -691,12 +691,15 @@ public class DubboBootstrap extends GenericEventListener {
      * Start the bootstrap
      */
     public DubboBootstrap start() {
+        // cas操作，将其他标记置为true
         if (started.compareAndSet(false, true)) {
+            // 执行初始化操作
             initialize();
             if (logger.isInfoEnabled()) {
                 logger.info(NAME + " is starting...");
             }
             // 1. export Dubbo Services
+            // 发布服务
             exportServices();
 
             // Not only provider register
@@ -859,7 +862,7 @@ public class DubboBootstrap extends GenericEventListener {
             // TODO, compatible with ServiceConfig.export()
             ServiceConfig serviceConfig = (ServiceConfig) sc;
             serviceConfig.setBootstrap(this);
-
+            // 是否异步发布服务，都是走ServiceConfig进行服务发布
             if (exportAsync) {
                 ExecutorService executor = executorRepository.getServiceExporterExecutor();
                 Future<?> future = executor.submit(() -> {

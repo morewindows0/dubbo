@@ -18,6 +18,7 @@
  */
 package org.apache.dubbo.demo.provider;
 
+import org.apache.dubbo.config.ConfigCenterConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 
@@ -34,14 +35,23 @@ public class Application {
     }
 
     @Configuration
+    // 该注解中会注入DubboLifecycleComponentRegistrar类，从而实现启动
     @EnableDubbo(scanBasePackages = "org.apache.dubbo.demo.provider")
     @PropertySource("classpath:/spring/dubbo-provider.properties")
     static class ProviderConfiguration {
         @Bean
         public RegistryConfig registryConfig() {
             RegistryConfig registryConfig = new RegistryConfig();
-            registryConfig.setAddress("zookeeper://127.0.0.1:2181");
+            registryConfig.setAddress("zookeeper://192.168.2.114:2181");
             return registryConfig;
+        }
+        
+        @Bean
+        public ConfigCenterConfig configCenterConfig() {
+            ConfigCenterConfig config = new ConfigCenterConfig();
+            // 修改配置中心连接时间，不然会出现连接超时的情况
+            config.setTimeout(Long.MAX_VALUE);
+            return config;
         }
     }
 }

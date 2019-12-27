@@ -45,11 +45,12 @@ public class DubboLifecycleComponentApplicationListener implements ApplicationLi
 
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
-
+        // 判断是否支持事件
         if (!supportsEvent(event)) {
             return;
         }
-
+         
+        // 执行事件
         if (event instanceof ContextRefreshedEvent) {
             onContextRefreshedEvent((ContextRefreshedEvent) event);
         } else if (event instanceof ContextClosedEvent) {
@@ -58,11 +59,14 @@ public class DubboLifecycleComponentApplicationListener implements ApplicationLi
     }
 
     protected void onContextRefreshedEvent(ContextRefreshedEvent event) {
+        // 获取上下文context
         ApplicationContext context = event.getApplicationContext();
+        // 从容器中加载DubboBootstrap对象
         DubboBootstrap bootstrap = loadBootsttrapAsBean(context);
         if (bootstrap == null) {
             bootstrap = DubboBootstrap.getInstance();
         }
+        // 启动
         bootstrap.start();
     }
 

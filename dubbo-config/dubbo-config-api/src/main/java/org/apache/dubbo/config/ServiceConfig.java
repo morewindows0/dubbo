@@ -199,7 +199,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             bootstrap.init();
         }
         
-        // 进行校验工作
+        // 检查并更新配置
         checkAndUpdateSubConfigs();
 
         //init serviceMetadata
@@ -298,7 +298,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // 标记服务已暴露
         exported = true;
         
-        // 如果服务路径为空，则使用接口名称
+        // 如果服务路径为空，则使用接口名称，默认使用interfaceName
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
@@ -319,10 +319,12 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 this,
                 serviceMetadata
         );
-
+        
+        // 加载所有配置的注册中心地址，组装成URL
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
         for (ProtocolConfig protocolConfig : protocols) {
+            // group和version组装成一个pathKey(serviceName)
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
                     .map(p -> p + "/" + path)
                     .orElse(path), group, version);

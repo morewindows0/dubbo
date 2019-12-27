@@ -84,6 +84,7 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport implements Co
     public BeanDefinition parse(Element element, ParserContext parserContext) {
         BeanDefinitionRegistry registry = parserContext.getRegistry();
         registerAnnotationConfigProcessors(registry);
+        // 向容器中注入DubboLifecycleComponentApplicationListener用于服务发布时使用
         registerDubboLifecycleComponentApplicationListener(registry);
         BeanDefinition beanDefinition = super.parse(element, parserContext);
         setSource(beanDefinition);

@@ -68,46 +68,64 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+/**
+ * spi基本测试
+ */
 public class ExtensionLoaderTest {
     @Test
     public void test_getExtensionLoader_Null() throws Exception {
         try {
+            // type为空，抛异常
             ExtensionLoader.getExtensionLoader(null);
             fail();
         } catch (IllegalArgumentException expected) {
             assertThat(expected.getMessage(),
-                    containsString("Extension type == null"));
+                       containsString("Extension type == null"));
         }
     }
 
     @Test
     public void test_getExtensionLoader_NotInterface() throws Exception {
         try {
+            // 不是接口抛异常
             ExtensionLoader.getExtensionLoader(ExtensionLoaderTest.class);
             fail();
         } catch (IllegalArgumentException expected) {
             assertThat(expected.getMessage(),
-                    containsString("Extension type (class org.apache.dubbo.common.extension.ExtensionLoaderTest) is not an interface"));
+                       containsString("Extension type (class org.apache.dubbo.common.extension.ExtensionLoaderTest) is not an interface"));
         }
     }
 
     @Test
     public void test_getExtensionLoader_NotSpiAnnotation() throws Exception {
         try {
+            // 没有spi注解抛异常
             ExtensionLoader.getExtensionLoader(NoSpiExt.class);
             fail();
         } catch (IllegalArgumentException expected) {
             assertThat(expected.getMessage(),
-                    allOf(containsString("org.apache.dubbo.common.extension.NoSpiExt"),
-                            containsString("is not an extension"),
-                            containsString("NOT annotated with @SPI")));
+                       allOf(containsString("org.apache.dubbo.common.extension.NoSpiExt"),
+                             containsString("is not an extension"),
+                             containsString("NOT annotated with @SPI")));
         }
     }
 
     @Test
-    public void test_getDefaultExtension() throws Exception {
+    public void test_Extension() throws Exception {
+        
+        // 通过该测试用例可以了解spi的相关机制，静态扩展点
         SimpleExt ext = ExtensionLoader.getExtensionLoader(SimpleExt.class).getDefaultExtension();
         assertThat(ext, instanceOf(SimpleExtImpl1.class));
+        
+        // 通过getAdaptiveExtension获取动态扩展点
+        // 如果扩展点中的对象没有被@Adaptive修饰，则会生成一个动态字节码来进行调用转发 SimpleExt$Adaptive
+        // 如果扩展点中的对象有被@Adaptive修饰，则会使用该对象进行转发
+        SimpleExt adaptiveExtension = ExtensionLoader.getExtensionLoader(SimpleExt.class).getAdaptiveExtension();
+        
+        // SimpleExt默认使用impl1，根据配置，也就是SimpleExtImpl1，所以会输出Ext1Impl1-echo
+        URL url = new URL("p1", "1.2.3.4", 1010, "path1");
+        String result = adaptiveExtension.echo(url, "adaptive");
+        assertEquals("Ext1Impl1-echo", result);
 
         String name = ExtensionLoader.getExtensionLoader(SimpleExt.class).getDefaultExtensionName();
         assertEquals("impl1", name);
@@ -247,7 +265,7 @@ public class ExtensionLoaderTest {
 
     @Test
     public void test_AddExtension_NoExtend() throws Exception {
-//        ExtensionLoader.getExtensionLoader(Ext9Empty.class).getSupportedExtensions();
+        //        ExtensionLoader.getExtensionLoader(Ext9Empty.class).getSupportedExtensions();
         ExtensionLoader.getExtensionLoader(Ext9Empty.class).addExtension("ext9", Ext9EmptyImpl.class);
         Ext9Empty ext = ExtensionLoader.getExtensionLoader(Ext9Empty.class).getExtension("ext9");
 
@@ -371,31 +389,31 @@ public class ExtensionLoaderTest {
         // test default
         URL url = URL.valueOf("test://localhost/test");
         List<ActivateExt1> list = ExtensionLoader.getExtensionLoader(ActivateExt1.class)
-                .getActivateExtension(url, new String[]{}, "default_group");
+                                                 .getActivateExtension(url, new String[]{}, "default_group");
         Assertions.assertEquals(1, list.size());
         Assertions.assertTrue(list.get(0).getClass() == ActivateExt1Impl1.class);
 
         // test group
         url = url.addParameter(GROUP_KEY, "group1");
         list = ExtensionLoader.getExtensionLoader(ActivateExt1.class)
-                .getActivateExtension(url, new String[]{}, "group1");
+                              .getActivateExtension(url, new String[]{}, "group1");
         Assertions.assertEquals(1, list.size());
         Assertions.assertTrue(list.get(0).getClass() == GroupActivateExtImpl.class);
 
         // test old @Activate group
         url = url.addParameter(GROUP_KEY, "old_group");
         list = ExtensionLoader.getExtensionLoader(ActivateExt1.class)
-                .getActivateExtension(url, new String[]{}, "old_group");
+                              .getActivateExtension(url, new String[]{}, "old_group");
         Assertions.assertEquals(2, list.size());
         Assertions.assertTrue(list.get(0).getClass() == OldActivateExt1Impl2.class
-                || list.get(0).getClass() == OldActivateExt1Impl3.class);
+                              || list.get(0).getClass() == OldActivateExt1Impl3.class);
 
         // test value
         url = url.removeParameter(GROUP_KEY);
         url = url.addParameter(GROUP_KEY, "value");
         url = url.addParameter("value", "value");
         list = ExtensionLoader.getExtensionLoader(ActivateExt1.class)
-                .getActivateExtension(url, new String[]{}, "value");
+                              .getActivateExtension(url, new String[]{}, "value");
         Assertions.assertEquals(1, list.size());
         Assertions.assertTrue(list.get(0).getClass() == ValueActivateExtImpl.class);
 
@@ -403,7 +421,7 @@ public class ExtensionLoaderTest {
         url = URL.valueOf("test://localhost/test");
         url = url.addParameter(GROUP_KEY, "order");
         list = ExtensionLoader.getExtensionLoader(ActivateExt1.class)
-                .getActivateExtension(url, new String[]{}, "order");
+                              .getActivateExtension(url, new String[]{}, "order");
         Assertions.assertEquals(2, list.size());
         Assertions.assertTrue(list.get(0).getClass() == OrderActivateExtImpl1.class);
         Assertions.assertTrue(list.get(1).getClass() == OrderActivateExtImpl2.class);
@@ -414,14 +432,14 @@ public class ExtensionLoaderTest {
         // test default
         URL url = URL.valueOf("test://localhost/test?ext=order1,default");
         List<ActivateExt1> list = ExtensionLoader.getExtensionLoader(ActivateExt1.class)
-                .getActivateExtension(url, "ext", "default_group");
+                                                 .getActivateExtension(url, "ext", "default_group");
         Assertions.assertEquals(2, list.size());
         Assertions.assertTrue(list.get(0).getClass() == OrderActivateExtImpl1.class);
         Assertions.assertTrue(list.get(1).getClass() == ActivateExt1Impl1.class);
 
         url = URL.valueOf("test://localhost/test?ext=default,order1");
         list = ExtensionLoader.getExtensionLoader(ActivateExt1.class)
-                .getActivateExtension(url, "ext", "default_group");
+                              .getActivateExtension(url, "ext", "default_group");
         Assertions.assertEquals(2, list.size());
         Assertions.assertTrue(list.get(0).getClass() == ActivateExt1Impl1.class);
         Assertions.assertTrue(list.get(1).getClass() == OrderActivateExtImpl1.class);

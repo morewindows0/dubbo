@@ -654,11 +654,13 @@ public class ExtensionLoader<T> {
     }
 
     private Map<String, Class<?>> getExtensionClasses() {
+        // 做缓存
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    // 导入扩展类 集合对象
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
@@ -671,7 +673,7 @@ public class ExtensionLoader<T> {
     private Map<String, Class<?>> loadExtensionClasses() {
         // 缓存@SPI注解上扩展点的名称
         cacheDefaultExtensionName();
-        // 从默认位置加载扩展点
+        // 从默认位置加载扩展点 注意@Adaptive注解的对象被缓存了，并不会存储在extensionClasses集合中
         Map<String, Class<?>> extensionClasses = new HashMap<>();
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName());
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName().replace("org.apache", "com.alibaba"));
@@ -768,12 +770,14 @@ public class ExtensionLoader<T> {
         }
         // 如果类上存在@Adaptive注解，则进行缓存
         if (clazz.isAnnotationPresent(Adaptive.class)) {
+            // 缓存spi中含有@Adaptive注解的对象
             cacheAdaptiveClass(clazz);
         }
         // 如果构造函数入参是包装类
         else if (isWrapperClass(clazz)) {
             cacheWrapperClass(clazz);
         } else {
+            // 只会存储含有比包含前面两项的对象
             clazz.getConstructor();
             if (StringUtils.isEmpty(name)) {
                 name = findAnnotationName(clazz);
@@ -895,6 +899,7 @@ public class ExtensionLoader<T> {
 
     private Class<?> getAdaptiveExtensionClass() {
         getExtensionClasses();
+        // 在getExtensionClasses函数中如果存在@Adaptive注解的对象，则进行缓存
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }

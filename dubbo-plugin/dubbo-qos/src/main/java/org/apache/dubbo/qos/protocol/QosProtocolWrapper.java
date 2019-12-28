@@ -33,7 +33,9 @@ import static org.apache.dubbo.common.constants.QosConstants.QOS_ENABLE;
 import static org.apache.dubbo.common.constants.QosConstants.QOS_PORT;
 import static org.apache.dubbo.common.constants.RegistryConstants.REGISTRY_PROTOCOL;
 
-
+/**
+ * 必须要配置启动了运维中心才会包装此对象，默认是不启动的
+ */
 public class QosProtocolWrapper implements Protocol {
 
     private final Logger logger = LoggerFactory.getLogger(QosProtocolWrapper.class);

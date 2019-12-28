@@ -153,11 +153,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private String interfaceName;
 
     /**
+     * 接口对象
      * The interface class of the exported service
      */
     private Class<?> interfaceClass;
 
     /**
+     * 服务实现，也就是接口的实现
      * The reference of the interface implementation
      */
     private T ref;
@@ -460,8 +462,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private void doExportUrls() {
         // 加载所有配置的注册中心地址，组装成一个URL
         List<URL> registryURLs = loadRegistries(true);
+        // 遍历协议组 <dubbo:protocol name="dubbo" port="20880" valid="true" id="dubbo" prefix="dubbo.protocols." />
         for (ProtocolConfig protocolConfig : protocols) {
-            // group 跟 version 组成一个 pathKey(serviceName)
+            // group 跟 version 组成一个 pathKey(serviceName) 默认就是接口名
             String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
             ProviderModel providerModel = new ProviderModel(pathKey, ref, interfaceClass);
             // ApplicationModel 用来存储 ProviderModel ，发布的服务的元数据
@@ -472,14 +475,15 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
-        // 获取协议名称
+        // 获取协议名称 <dubbo:protocol/>
         String name = protocolConfig.getName();
         // 协议默认为dubbo
         if (StringUtils.isEmpty(name)) {
             name = DUBBO;
         }
 
-        // TODO: 2019/12/27 进行一些列配置的解析 
+        // TODO: 2019/12/27 进行一些列配置装载
+        // 进行一些配置的装载
         Map<String, String> map = new HashMap<String, String>();
         map.put(SIDE_KEY, PROVIDER_SIDE);
 
@@ -574,9 +578,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
         // export service
         // 获取当前服务要发布的目标ip和port
+        // 注意此时registryURLs为registry://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-annotation-provider&dubbo=2.0.2&pid=13084&registry=zookeeper&timestamp=1577524401300
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         // 组装成URL
+        // 组装成的url dubbo://192.168.2.119:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=dubbo-demo-annotation-provider&bean.name=ServiceBean:org.apache.dubbo.demo.DemoService&bind.ip=192.168.2.119&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=7592&register=true&release=&side=provider&timestamp=1577525402206
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
         // 通过ConfiguratorFactory实现动态改变配置的功能
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
@@ -628,10 +634,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         }
 
                         // 构建Invoker代理类
+                        // proxyFactory 动态扩展点 会生成一个动态的字节码，进行调用，但是默认走的还是JavassistProxyFactory
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
                         // 对Invoker做委托，对Invoker做包装
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
                         // 发布这个代理 export是一个方法层面的自适应扩展，通过protocol注释可知，此时的协议为registry，因此会通过RegistryProtocol
+                        // protocol自适应扩展点，会通过Protocol$Adaptive字节码进行调用，根据url中的协议来实现对协议的适配
+                        // 此时Invoker中协议为registry
+                        // ProtocolFilterWrapper/ProtocolListenerWrapper/RegistryProtocol
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         // 添加到发布集合中
                         exporters.add(exporter);
@@ -715,6 +725,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             if (isInvalidLocalHost(hostToBind)) {
                 anyhost = true;
                 try {
+                    // 从网络连接中获取ip地址
                     hostToBind = InetAddress.getLocalHost().getHostAddress();
                 } catch (UnknownHostException e) {
                     logger.warn(e.getMessage(), e);

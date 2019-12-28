@@ -150,6 +150,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected String layer;
 
     /**
+     * 保存<dubbo:application/>标签中的属性值
      * The application info
      */
     protected ApplicationConfig application;
@@ -326,21 +327,33 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected List<URL> loadRegistries(boolean provider) {
         // check && override if necessary
         List<URL> registryList = new ArrayList<URL>();
+        // <dubbo:registry/>标签中不为空 <dubbo:registry address="zookeeper://192.168.2.114:2181"/>
         if (CollectionUtils.isNotEmpty(registries)) {
+            // 可能存在多个，则进行遍历
             for (RegistryConfig config : registries) {
+               // 获取地址
                 String address = config.getAddress();
                 if (StringUtils.isEmpty(address)) {
+                    // 为空，绑定为0.0.0.0
                     address = ANYHOST_VALUE;
                 }
+                // 地址不为N/A 
                 if (!RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
                     Map<String, String> map = new HashMap<String, String>();
+                    // <dubbo:application name="dubbo-demo-annotation-provider" valid="true" id="dubbo-demo-annotation-provider" prefix="dubbo.application" />
+                    // 将<dubbo:application/>标签中的属性添加到map中
                     appendParameters(map, application);
+                    // 装载协议中的属性
                     appendParameters(map, config);
+                    // 添加path_key的值
                     map.put(PATH_KEY, RegistryService.class.getName());
+                    // 添加运行时参数
                     appendRuntimeParameters(map);
                     if (!map.containsKey(PROTOCOL_KEY)) {
+                        // 添加默认dubbo协议
                         map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
                     }
+                    // 封装成URL
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
@@ -350,6 +363,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                                 .build();
                         if ((provider && url.getParameter(REGISTER_KEY, true))
                                 || (!provider && url.getParameter(SUBSCRIBE_KEY, true))) {
+                            // 添加到registryList集合中
                             registryList.add(url);
                         }
                     }
@@ -407,9 +421,13 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
 
     static void appendRuntimeParameters(Map<String, String> map) {
+        // 协议名
         map.put(DUBBO_VERSION_KEY, Version.getProtocolVersion());
+        // release版本
         map.put(RELEASE_KEY, Version.getVersion());
+        // 时间戳
         map.put(TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
+        // 如果存在pid
         if (ConfigUtils.getPid() > 0) {
             map.put(PID_KEY, String.valueOf(ConfigUtils.getPid()));
         }

@@ -280,10 +280,14 @@ public class DubboProtocol extends AbstractProtocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+        // 得到服务发布URL
+        // dubbo://192.168.2.119:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=dubbo-demo-annotation-provider&bean.name=ServiceBean:org.apache.dubbo.demo.DemoService&bind.ip=192.168.2.119&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=20048&register=true&release=&side=provider&timestamp=1577528408055
         URL url = invoker.getUrl();
 
         // export service.
         // 获取服务标识，由服务名、服务端口号、版本组成
+        // 服务+端口号
+        // org.apache.dubbo.demo.DemoService:20880
         String key = serviceKey(url);
         // 创建DubboExporter
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
@@ -291,6 +295,7 @@ public class DubboProtocol extends AbstractProtocol {
         exporterMap.put(key, exporter);
 
         //export an stub service for dispatching event
+        // 存根和回调
         Boolean isStubSupportEvent = url.getParameter(STUB_EVENT_KEY, DEFAULT_STUB_EVENT);
         Boolean isCallbackservice = url.getParameter(IS_CALLBACK_SERVICE, false);
         if (isStubSupportEvent && !isCallbackservice) {

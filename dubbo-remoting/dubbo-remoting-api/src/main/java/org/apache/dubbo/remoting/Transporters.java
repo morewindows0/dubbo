@@ -79,6 +79,8 @@ public class Transporters {
     }
 
     public static Transporter getTransporter() {
+        // getTransporter 是一个自适应扩展点，它针对 bind 方法添加了自适应注解，意味着，bing 方法的具体实现，会基于
+        //Transporter$Adaptive 方法进行适配，那么在这里面默认的通信协议 默认为NettyTransporter
         return ExtensionLoader.getExtensionLoader(Transporter.class).getAdaptiveExtension();
     }
 

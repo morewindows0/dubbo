@@ -95,6 +95,7 @@ public class DubboComponentScanRegistrar implements ImportBeanDefinitionRegistra
     }
 
     private Set<String> getPackagesToScan(AnnotationMetadata metadata) {
+        // 获取@DubboComponentScan注解上的属性
         AnnotationAttributes attributes = AnnotationAttributes.fromMap(
                 metadata.getAnnotationAttributes(DubboComponentScan.class.getName()));
         String[] basePackages = attributes.getStringArray("basePackages");

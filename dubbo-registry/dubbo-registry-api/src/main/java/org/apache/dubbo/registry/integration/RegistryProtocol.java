@@ -197,9 +197,11 @@ public class RegistryProtocol implements Protocol {
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
         // 获得注册中心的URL 如zookeeper://ip:port
+        // zookeeper://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-annotation-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F192.168.2.119%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddubbo-demo-annotation-provider%26bean.name%3DServiceBean%3Aorg.apache.dubbo.demo.DemoService%26bind.ip%3D192.168.2.119%26bind.port%3D20880%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D20876%26register%3Dtrue%26release%3D%26side%3Dprovider%26timestamp%3D1577527277798&pid=20876&timestamp=1577527277793
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
         // 这里获得服务提供者的URL dubbo://ip:port
+        // dubbo://192.168.2.119:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=dubbo-demo-annotation-provider&bean.name=ServiceBean:org.apache.dubbo.demo.DemoService&bind.ip=192.168.2.119&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=20876&register=true&release=&side=provider&timestamp=1577527277798
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
@@ -211,7 +213,8 @@ public class RegistryProtocol implements Protocol {
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
-  
+        
+        // 根据订阅重写服务发布URL
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
         // 通过具体协议去暴露服务
@@ -257,12 +260,15 @@ public class RegistryProtocol implements Protocol {
          * 通过此方法来暴露一个服务，本质上就是启动一个通信服务，将本地的ip和端口打开，进行监听
          */
         // 获取发布协议的url
+        // dubbo://192.168.2.119:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=dubbo-demo-annotation-provider&bean.name=ServiceBean:org.apache.dubbo.demo.DemoService&bind.ip=192.168.2.119&bind.port=20880&deprecated=false&dubbo=2.0.2&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=19828&register=true&release=&side=provider&timestamp=1577527745773
         String key = getCacheKey(originInvoker);
 
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
             //  对原有的invoker, 委托给了InvokerDelegate
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
             //  将 invoker 转换为 exporter 并启动 netty 服务
+            // 这里的protocol并不是一个简单的DubboProtocol 
+            // DubboProtocol被包装了ProtocolFilterWrapper/ProtocolListenerWrapper/DubboProtocol
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
         });
     }
@@ -321,6 +327,7 @@ public class RegistryProtocol implements Protocol {
     }
 
     private URL getRegistryUrl(Invoker<?> originInvoker) {
+        // 根据协议名称修改为具体协议
         URL registryUrl = originInvoker.getUrl();
         if (REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {
             String protocol = registryUrl.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY);
@@ -372,6 +379,7 @@ public class RegistryProtocol implements Protocol {
      * @return
      */
     private URL getProviderUrl(final Invoker<?> originInvoker) {
+        // 获取服务发布协议，如dubbo
         String export = originInvoker.getUrl().getParameterAndDecoded(EXPORT_KEY);
         if (export == null || export.length() == 0) {
             throw new IllegalArgumentException("The registry export url is null! registry: " + originInvoker.getUrl());

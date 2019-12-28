@@ -167,29 +167,37 @@ public abstract class AbstractConfig implements Serializable {
     }
 
     protected static void appendParameters(Map<String, String> parameters, Object config) {
+        // 装载config中的值
         appendParameters(parameters, config, null);
     }
 
     @SuppressWarnings("unchecked")
     protected static void appendParameters(Map<String, String> parameters, Object config, String prefix) {
+        // 如果config为null，则直接返回
         if (config == null) {
             return;
         }
+        // 获取config中方法的集合，比如ApplicationConfig中的方法集合<dubbo:applicaton/>
         Method[] methods = config.getClass().getMethods();
         for (Method method : methods) {
             try {
                 String name = method.getName();
+                // 如果方法是get类型
                 if (MethodUtils.isGetter(method)) {
+                    // 获取方法上的@Parameter注解
                     Parameter parameter = method.getAnnotation(Parameter.class);
+                    // 如果方法返回值为Object或者该方法已经被排除，则继续循环
                     if (method.getReturnType() == Object.class || parameter != null && parameter.excluded()) {
                         continue;
                     }
                     String key;
+                    // 获取注解上key的值
                     if (parameter != null && parameter.key().length() > 0) {
                         key = parameter.key();
                     } else {
                         key = calculatePropertyFromGetter(name);
                     }
+                    // 通过反射获取注解上的value
                     Object value = method.invoke(config);
                     String str = String.valueOf(value).trim();
                     if (value != null && str.length() > 0) {
@@ -209,6 +217,7 @@ public abstract class AbstractConfig implements Serializable {
                         if (prefix != null && prefix.length() > 0) {
                             key = prefix + "." + key;
                         }
+                        // 以key键值形式存储
                         parameters.put(key, str);
                     } else if (parameter != null && parameter.required()) {
                         throw new IllegalStateException(config.getClass().getSimpleName() + "." + key + " == null");

@@ -228,12 +228,14 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void register(URL url) {
+        // 将url加入registered集合中
         super.register(url);
+        // 移除异常url
         removeFailedRegistered(url);
         removeFailedUnregistered(url);
         try {
             // Sending a registration request to the server side
-            // 调用子类实现真正的服务注册，把 url 注册到 zk 上
+            // 调用子类实现真正的服务注册，把 url 注册到 zk 上 这里会调用子类的方法 ZookeeperRegistry
             doRegister(url);
         } catch (Exception e) {
             Throwable t = e;

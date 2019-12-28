@@ -55,7 +55,7 @@ public class Transporters {
             // 如果handlers元素数量大于1 ，则创建ChannelHandler分发器
             handler = new ChannelHandlerDispatcher(handlers);
         }
-        // 获取自适应 Transporter 实例，并调用实例方法
+        // 获取自适应 Transporter 实例，并调用实例方法 默认使用netty4
         return getTransporter().bind(url, handler);
     }
 

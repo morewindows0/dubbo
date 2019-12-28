@@ -185,7 +185,9 @@ public class RegistryProtocol implements Protocol {
     }
 
     public void register(URL registryUrl, URL registeredProviderUrl) {
+        // registryFactory为一个动态扩展点，比如根据zookeeper就获取ZookeeperRegistry，这里会调父类的getRegistry方法
         Registry registry = registryFactory.getRegistry(registryUrl);
+        // ZookeeperRegistry中没有register，因此会调用父类中的方法
         registry.register(registeredProviderUrl);
     }
 
@@ -217,14 +219,16 @@ public class RegistryProtocol implements Protocol {
         // 根据订阅重写服务发布URL
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
-        // 通过具体协议去暴露服务
+        // 通过具体协议去暴露服务，监听端口，启动Netty服务
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
-        // 根据Invoker中的url获取Registry实例：ZooKeeperRegistry
+        // 根据Invoker中的url获取Registry实例：ZooKeeperRegistry 并实现zk连接
         final Registry registry = getRegistry(originInvoker);
         // 获取要注册到注册中心的 URL: dubbo://ip:port
+        // dubbo://192.168.2.119:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=dubbo-demo-annotation-provider&bean.name=ServiceBean:org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=23536&register=true&release=&side=provider&timestamp=1577541946553
         final URL registeredProviderUrl = getRegisteredProviderUrl(providerUrl, registryUrl);
+        // 注册服务到providerInvokers，猜测这里应该是为消费做准备
         ProviderInvokerWrapper<T> providerInvokerWrapper = ProviderConsumerRegTable.registerProvider(originInvoker,
                 registryUrl, registeredProviderUrl);
         //to judge if we need to delay publish
@@ -233,6 +237,7 @@ public class RegistryProtocol implements Protocol {
         if (register) {
             // 进行注册
             register(registryUrl, registeredProviderUrl);
+            // 标记服务提供Invoker已经注册
             providerInvokerWrapper.setReg(true);
         }
 

@@ -92,6 +92,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
                 .addParameter(INTERFACE_KEY, RegistryService.class.getName())
                 .removeParameters(EXPORT_KEY, REFER_KEY)
                 .build();
+        // zookeeper://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService
         String key = url.toServiceStringWithoutResolving();
         // Lock the registry access process to ensure a single instance of the registry
         // 加锁
@@ -104,6 +105,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
             }
             //create registry by spi/ioc
             // 创建注册中心
+            // zookeeper://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-annotation-provider&dubbo=2.0.2&interface=org.apache.dubbo.registry.RegistryService&pid=22824&timestamp=1577540309940
             registry = createRegistry(url);
             if (registry == null) {
                 throw new IllegalStateException("Can not create registry " + url);

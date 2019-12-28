@@ -39,6 +39,7 @@ public class ZookeeperRegistryFactory extends AbstractRegistryFactory {
 
     @Override
     public Registry createRegistry(URL url) {
+        // zookeeperTransporter为通过spi机制注入的CuratorZookeeperTransporter
         return new ZookeeperRegistry(url, zookeeperTransporter);
     }
 

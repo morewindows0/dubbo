@@ -120,6 +120,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
     /**
+     * SPI扩展，默认为JavassistProxyFactory，没有自适应的对象，所以会动态生成一个ProxyFactory$Adaptive代理对象来执行
      * A {@link ProxyFactory} implementation that will generate a exported service proxy,the JavassistProxyFactory is its
      * default implementation
      */
@@ -304,6 +305,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         checkApplication();
         // if protocol is not injvm checkRegistry
         if (!isOnlyInJvm()) {
+            // 创建zk客户端，在服务发布的时候，就不用再次创建了
             checkRegistry();
         }
         this.refresh();
@@ -371,7 +373,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     public synchronized void export() {
-        // 检查并更新配置
+        // 检查并更新配置 这里就会进行zk 客户端的创建
         checkAndUpdateSubConfigs();
         // 是否应该发布服务 主要在@Service上的export属性，默认为true
         if (!shouldExport()) {
@@ -635,8 +637,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
                         // 构建Invoker代理类
                         // proxyFactory 动态扩展点 会生成一个动态的字节码，进行调用，但是默认走的还是JavassistProxyFactory
+                        // ref:DemoServiceImpl 接口实现
+                        // interfaceClass:interface org.apache.dubbo.demo.DemoService 接口
+                        // url:registry://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-annotation-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F192.168.2.119%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddubbo-demo-annotation-provider%26bean.name%3DServiceBean%3Aorg.apache.dubbo.demo.DemoService%26bind.ip%3D192.168.2.119%26bind.port%3D20880%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D23016%26register%3Dtrue%26release%3D%26side%3Dprovider%26timestamp%3D1577538759585&pid=23016&registry=zookeeper&timestamp=1577538759581
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
                         // 对Invoker做委托，对Invoker做包装
+                        // 对元数据做代理
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
                         // 发布这个代理 export是一个方法层面的自适应扩展，通过protocol注释可知，此时的协议为registry，因此会通过RegistryProtocol
                         // protocol自适应扩展点，会通过Protocol$Adaptive字节码进行调用，根据url中的协议来实现对协议的适配

@@ -118,6 +118,7 @@ public class Exchangers {
     }
 
     public static Exchanger getExchanger(String type) {
+        // 这里又是一个SPI扩展点，默认为HeaderExchanger
         return ExtensionLoader.getExtensionLoader(Exchanger.class).getExtension(type);
     }
 

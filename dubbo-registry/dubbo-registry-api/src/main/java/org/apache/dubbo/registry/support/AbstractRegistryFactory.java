@@ -86,6 +86,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
 
     @Override
     public Registry getRegistry(URL url) {
+        // 构建url
         url = URLBuilder.from(url)
                 .setPath(RegistryService.class.getName())
                 .addParameter(INTERFACE_KEY, RegistryService.class.getName())
@@ -93,13 +94,16 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
                 .build();
         String key = url.toServiceStringWithoutResolving();
         // Lock the registry access process to ensure a single instance of the registry
+        // 加锁
         LOCK.lock();
         try {
+            // 先从缓存中获取
             Registry registry = REGISTRIES.get(key);
             if (registry != null) {
                 return registry;
             }
             //create registry by spi/ioc
+            // 创建注册中心
             registry = createRegistry(url);
             if (registry == null) {
                 throw new IllegalStateException("Can not create registry " + url);

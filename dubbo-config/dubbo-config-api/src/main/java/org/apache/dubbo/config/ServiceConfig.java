@@ -142,6 +142,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private final List<URL> urls = new ArrayList<URL>();
 
     /**
+     * 存储已发布服务的集合
      * The exported services
      */
     private final List<Exporter<?>> exporters = new ArrayList<Exporter<?>>();
@@ -575,23 +576,29 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         // 获取当前服务要发布的目标ip和port
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
+        // 组装成URL
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
-
+        // 通过ConfiguratorFactory实现动态改变配置的功能
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
-
+       
+        // 获取scope属性
         String scope = url.getParameter(SCOPE_KEY);
         // don't export when none is configured
+        // 如果scope不为none，则判断是否为local或remote，从而发布Local或Remote服务，默认两个都会发布
+        // scope默认为null，如果scope为none则不发布服务
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)
+            // injvm发布到本地
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
                 exportLocal(url);
             }
             // export to remote if the config is not local (export to local only when config is local)
+            // 发布远程服务
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
                 if (!isOnlyInJvm() && logger.isInfoEnabled()) {
                     logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
@@ -599,10 +606,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 if (CollectionUtils.isNotEmpty(registryURLs)) {
                     for (URL registryURL : registryURLs) {
                         //if protocol is only injvm ,not register
+                        // 如果是injvm协议，则继续循环
                         if (LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
                             continue;
                         }
+                        // 组装url
                         url = url.addParameterIfAbsent(DYNAMIC_KEY, registryURL.getParameter(DYNAMIC_KEY));
+                        // 监控的url
                         URL monitorUrl = loadMonitor(registryURL);
                         if (monitorUrl != null) {
                             url = url.addParameterAndEncoded(MONITOR_KEY, monitorUrl.toFullString());
@@ -617,10 +627,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                             registryURL = registryURL.addParameter(PROXY_KEY, proxy);
                         }
 
+                        // 构建Invoker代理类
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
+                        // 对Invoker做委托，对Invoker做包装
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
-
+                        // 发布这个代理 export是一个方法层面的自适应扩展，通过protocol注释可知，此时的协议为registry，因此会通过RegistryProtocol
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
+                        // 添加到发布集合中
                         exporters.add(exporter);
                     }
                 } else {
@@ -645,16 +658,20 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     /**
+     * 本地injvm服务发布总是会执行的
      * always export injvm
      */
     private void exportLocal(URL url) {
+        // 组装本地URL，host为127.0.0.1 端口为0
         URL local = URLBuilder.from(url)
                 .setProtocol(LOCAL_PROTOCOL)
                 .setHost(LOCALHOST_VALUE)
                 .setPort(0)
                 .build();
+        // 进行服务的发布
         Exporter<?> exporter = protocol.export(
                 proxyFactory.getInvoker(ref, (Class) interfaceClass, local));
+        // 保存到服务发布集合中
         exporters.add(exporter);
         logger.info("Export dubbo service " + interfaceClass.getName() + " to local registry url : " + local);
     }

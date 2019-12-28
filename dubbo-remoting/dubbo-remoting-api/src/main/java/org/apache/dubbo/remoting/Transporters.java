@@ -41,6 +41,7 @@ public class Transporters {
     }
 
     public static Server bind(URL url, ChannelHandler... handlers) throws RemotingException {
+        // 参数校验
         if (url == null) {
             throw new IllegalArgumentException("url == null");
         }
@@ -51,8 +52,10 @@ public class Transporters {
         if (handlers.length == 1) {
             handler = handlers[0];
         } else {
+            // 如果handlers元素数量大于1 ，则创建ChannelHandler分发器
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // 获取自适应 Transporter 实例，并调用实例方法
         return getTransporter().bind(url, handler);
     }
 

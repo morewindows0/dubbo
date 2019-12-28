@@ -163,6 +163,10 @@ public class RegistryProtocol implements Protocol {
         this.protocol = protocol;
     }
 
+    /**
+     * 通过依赖注入来实现的扩展点
+     * @param registryFactory
+     */
     public void setRegistryFactory(RegistryFactory registryFactory) {
         this.registryFactory = registryFactory;
     }
@@ -192,40 +196,51 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        // 获得注册中心的URL 如zookeeper://ip:port
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
+        // 这里获得服务提供者的URL dubbo://ip:port
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
         //  subscription information to cover.
+        // 订阅override数组，在admin控制台可以针对服务进行治理，比如修改权重，修改路由机制等，当注册中心有此服务的覆盖配置时，则推送消息
+        // 给提供者，重新暴露服务
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
-
+  
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
+        // 通过具体协议去暴露服务
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
+        // 根据Invoker中的url获取Registry实例：ZooKeeperRegistry
         final Registry registry = getRegistry(originInvoker);
+        // 获取要注册到注册中心的 URL: dubbo://ip:port
         final URL registeredProviderUrl = getRegisteredProviderUrl(providerUrl, registryUrl);
         ProviderInvokerWrapper<T> providerInvokerWrapper = ProviderConsumerRegTable.registerProvider(originInvoker,
                 registryUrl, registeredProviderUrl);
         //to judge if we need to delay publish
         boolean register = registeredProviderUrl.getParameter("register", true);
+        // 是否配置了注册中心，如果是，则需要注册
         if (register) {
+            // 进行注册
             register(registryUrl, registeredProviderUrl);
             providerInvokerWrapper.setReg(true);
         }
 
         // Deprecated! Subscribe to override rules in 2.6.x or before.
+        // 设置注册中心的订阅
         registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
 
         exporter.setRegisterUrl(registeredProviderUrl);
         exporter.setSubscribeUrl(overrideSubscribeUrl);
         //Ensure that a new exporter instance is returned every time export
+        //  保证每次 export 都返回一个新的 exporter 实例
         return new DestroyableExporter<>(exporter);
     }
 
@@ -238,10 +253,16 @@ public class RegistryProtocol implements Protocol {
 
     @SuppressWarnings("unchecked")
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker, URL providerUrl) {
+        /**
+         * 通过此方法来暴露一个服务，本质上就是启动一个通信服务，将本地的ip和端口打开，进行监听
+         */
+        // 获取发布协议的url
         String key = getCacheKey(originInvoker);
 
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
+            //  对原有的invoker, 委托给了InvokerDelegate
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
+            //  将 invoker 转换为 exporter 并启动 netty 服务
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
         });
     }
@@ -294,6 +315,7 @@ public class RegistryProtocol implements Protocol {
      * @return
      */
     private Registry getRegistry(final Invoker<?> originInvoker) {
+        // 将url转换成配置的具体协议，比如zookeeper://ip:port，这样后续获得的注册中心就是基于zk的实现
         URL registryUrl = getRegistryUrl(originInvoker);
         return registryFactory.getRegistry(registryUrl);
     }

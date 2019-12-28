@@ -49,7 +49,14 @@ public class ProtocolFilterWrapper implements Protocol {
     }
 
 
-
+    /**
+     * 构建责任链，基于激活扩展点
+     * @param invoker
+     * @param key
+     * @param group
+     * @param <T>
+     * @return
+     */
     private static <T> Invoker<T> buildInvokerChain(final Invoker<T> invoker, String key, String group) {
         Invoker<T> last = invoker;
         List<Filter> filters = ExtensionLoader.getExtensionLoader(Filter.class).getActivateExtension(invoker.getUrl(), key, group);

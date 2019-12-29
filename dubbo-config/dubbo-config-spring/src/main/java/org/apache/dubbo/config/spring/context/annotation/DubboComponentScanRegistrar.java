@@ -59,7 +59,7 @@ public class DubboComponentScanRegistrar implements ImportBeanDefinitionRegistra
         
         // 注入ServiceAnnotationBeanPostProcessor 非常重要，实现服务发布关键对象
         registerServiceAnnotationBeanPostProcessor(packagesToScan, registry);
-
+        // 注入ReferenceAnnotationBeanPostProcessor非常重要，实现服务消费的关键对象
         registerReferenceAnnotationBeanPostProcessor(registry);
 
     }

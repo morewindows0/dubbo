@@ -109,17 +109,24 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
     @Override
     protected Object doGetInjectedBean(Reference reference, Object bean, String beanName, Class<?> injectedType,
                                        InjectionMetadata.InjectedElement injectedElement) throws Exception {
-
+         
+        // 构建beanName
+        // ServiceBean:org.apache.dubbo.demo.DemoService
         String referencedBeanName = buildReferencedBeanName(reference, injectedType);
-
+        
+        // 构建依赖bean 组成成<dubbo:reference/>形式
+        // <dubbo:reference singleton="true" prefix="dubbo.reference.org.apache.dubbo.demo.DemoService" interface="org.apache.dubbo.demo.DemoService" generic="false" lazy="false" sticky="false" id="org.apache.dubbo.demo.DemoService" valid="true" />
         ReferenceBean referenceBean = buildReferenceBeanIfAbsent(referencedBeanName, reference, injectedType, getClassLoader());
-
+         
+        // 缓存构建的<dubbo:reference/>
         cacheInjectedReferenceBean(referenceBean, injectedElement);
-
+        
+        // 构建代理 服务消费入口
         return buildProxy(referencedBeanName, referenceBean, injectedType);
     }
 
     private Object buildProxy(String referencedBeanName, ReferenceBean referenceBean, Class<?> injectedType) {
+        // 构建代理JDK动态代理 该函数很重要，服务消费在此可以看到入口
         InvocationHandler handler = buildInvocationHandler(referencedBeanName, referenceBean);
         return Proxy.newProxyInstance(getClassLoader(), new Class[]{injectedType}, handler);
     }
@@ -127,8 +134,9 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
     private InvocationHandler buildInvocationHandler(String referencedBeanName, ReferenceBean referenceBean) {
 
         ReferenceBeanInvocationHandler handler = localReferenceBeanInvocationHandlerCache.get(referencedBeanName);
-
+         
         if (handler == null) {
+            // 构建代理handler
             handler = new ReferenceBeanInvocationHandler(referenceBean);
         }
 
@@ -137,6 +145,7 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
             localReferenceBeanInvocationHandlerCache.put(referencedBeanName, handler);
         } else {
             // Remote Reference Bean should initialize immediately
+            // 远程初始化，消费者入口
             handler.init();
         }
 
@@ -170,6 +179,7 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
         }
 
         private void init() {
+            // 会调用ReferenceConfig中的get方法，服务消费入口
             this.bean = referenceBean.get();
         }
     }

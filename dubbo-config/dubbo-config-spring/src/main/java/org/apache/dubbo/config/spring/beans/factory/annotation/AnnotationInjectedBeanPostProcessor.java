@@ -93,6 +93,7 @@ public abstract class AnnotationInjectedBeanPostProcessor<A extends Annotation> 
     private int order = Ordered.LOWEST_PRECEDENCE;
 
     public AnnotationInjectedBeanPostProcessor() {
+        // 在注入ReferenceAnnotationBeanPostProcessor的时候获取了对象上的泛型类型，也就是@Reference的类型
         this.annotationType = resolveGenericType(getClass());
     }
 
@@ -124,9 +125,11 @@ public abstract class AnnotationInjectedBeanPostProcessor<A extends Annotation> 
     @Override
     public PropertyValues postProcessPropertyValues(
             PropertyValues pvs, PropertyDescriptor[] pds, Object bean, String beanName) throws BeanCreationException {
-
+        // spring加载bean的时候，对@Reference属性的注入，也是消费者入口
+        // 找到属性的元数据
         InjectionMetadata metadata = findInjectionMetadata(beanName, bean.getClass(), pvs);
         try {
+            // 进行属性注入 会调用AnnotatedFieldElement内部类方法进行注入
             metadata.inject(bean, beanName, pvs);
         } catch (BeanCreationException ex) {
             throw ex;
@@ -149,7 +152,9 @@ public abstract class AnnotationInjectedBeanPostProcessor<A extends Annotation> 
         final List<AnnotationInjectedBeanPostProcessor.AnnotatedFieldElement> elements = new LinkedList<AnnotationInjectedBeanPostProcessor.AnnotatedFieldElement>();
 
         ReflectionUtils.doWithFields(beanClass, field -> {
-
+            
+            // 注意，在初始化AnnotationInjectedBeanPostProcessor内的时候，就已经对annotationType进行了赋值
+            // 所以此处会找到@Reference的字段
             A annotation = getAnnotation(field, getAnnotationType());
 
             if (annotation != null) {
@@ -187,7 +192,7 @@ public abstract class AnnotationInjectedBeanPostProcessor<A extends Annotation> 
             if (!isVisibilityBridgeMethodPair(method, bridgedMethod)) {
                 return;
             }
-
+            // 找到@Reference方法的注解
             A annotation = findAnnotation(bridgedMethod, getAnnotationType());
 
             if (annotation != null && method.equals(ClassUtils.getMostSpecificMethod(method, beanClass))) {
@@ -214,7 +219,10 @@ public abstract class AnnotationInjectedBeanPostProcessor<A extends Annotation> 
 
 
     private AnnotationInjectedBeanPostProcessor.AnnotatedInjectionMetadata buildAnnotatedMetadata(final Class<?> beanClass) {
+        // AnnotationInjectedBeanPostProcessor重写了buildAnnotationMetadata方法
+        // 获取注释字段的元数据
         Collection<AnnotationInjectedBeanPostProcessor.AnnotatedFieldElement> fieldElements = findFieldAnnotationMetadata(beanClass);
+        // 获取注释方法的元数据
         Collection<AnnotationInjectedBeanPostProcessor.AnnotatedMethodElement> methodElements = findAnnotatedMethodMetadata(beanClass);
         return new AnnotationInjectedBeanPostProcessor.AnnotatedInjectionMetadata(beanClass, fieldElements, methodElements);
 
@@ -328,12 +336,15 @@ public abstract class AnnotationInjectedBeanPostProcessor<A extends Annotation> 
      */
     protected Object getInjectedObject(A annotation, Object bean, String beanName, Class<?> injectedType,
                                        InjectionMetadata.InjectedElement injectedElement) throws Exception {
-
+        
+        // 构建缓存key
+        // ServiceBean:org.apache.dubbo.demo.DemoService#source=private org.apache.dubbo.demo.DemoService org.apache.dubbo.demo.consumer.comp.DemoServiceComponent.demoService#attributes={}
         String cacheKey = buildInjectedObjectCacheKey(annotation, bean, beanName, injectedType, injectedElement);
 
         Object injectedObject = injectedObjectsCache.get(cacheKey);
 
         if (injectedObject == null) {
+            // 获取服务对象  ReferenceAnnotationBeanPostProcessor#doGetInjectedBean
             injectedObject = doGetInjectedBean(annotation, bean, beanName, injectedType, injectedElement);
             // Customized inject-object if necessary
             injectedObjectsCache.putIfAbsent(cacheKey, injectedObject);
@@ -511,11 +522,13 @@ public abstract class AnnotationInjectedBeanPostProcessor<A extends Annotation> 
 
         @Override
         protected void inject(Object bean, String beanName, PropertyValues pvs) throws Throwable {
-
+            // 获取字段类型
             Class<?> injectedType = field.getType();
-
+            
+            // 获取注入对象，这里也就是服务消费的真正入口
             Object injectedObject = getInjectedObject(annotation, bean, beanName, injectedType, this);
-
+            
+            // 通过反射设置对象的值
             ReflectionUtils.makeAccessible(field);
 
             field.set(bean, injectedObject);

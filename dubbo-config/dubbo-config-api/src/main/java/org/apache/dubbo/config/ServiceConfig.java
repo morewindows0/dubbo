@@ -636,10 +636,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         }
 
                         // 构建Invoker代理类
+                        // 注意JavassistProxyFactory会被包装
+                        // StubProxyFactoryWrapper/JavassistProxyFactory
                         // proxyFactory 动态扩展点 会生成一个动态的字节码，进行调用，但是默认走的还是JavassistProxyFactory
                         // ref:DemoServiceImpl 接口实现
                         // interfaceClass:interface org.apache.dubbo.demo.DemoService 接口
                         // url:registry://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-annotation-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F192.168.2.119%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddubbo-demo-annotation-provider%26bean.name%3DServiceBean%3Aorg.apache.dubbo.demo.DemoService%26bind.ip%3D192.168.2.119%26bind.port%3D20880%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D23016%26register%3Dtrue%26release%3D%26side%3Dprovider%26timestamp%3D1577538759585&pid=23016&registry=zookeeper&timestamp=1577538759581
+                        // 生成代理对象的具体内容参看org.apache.dubbo.demo.provider.WrapperProxy
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
                         // 对Invoker做委托，对Invoker做包装
                         // 对元数据做代理

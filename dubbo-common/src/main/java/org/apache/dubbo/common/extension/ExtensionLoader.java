@@ -574,11 +574,13 @@ public class ExtensionLoader<T> {
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             /**
              * 以org.apache.dubbo.rpc.Protocol为例 wrapperClasses中存在filter和listener，进行包装
-             * ProtocolFilterWrapper/ProtocolListenerWrapper/RegistryProtocol 形成链
+             * ProtocolListenerWrapper/ProtocolFilterWrapper/RegistryProtocol 形成链
              */
+            // 注意wrapperClasses中的顺序：filter->listener
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     // 实例化对象 这里可能会对实例进行包装，形成一个链
+                    // 被包装后会是：listener->filter
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
             }

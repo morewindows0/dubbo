@@ -293,9 +293,11 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     @Override
     public void subscribe(URL url, NotifyListener listener) {
         super.subscribe(url, listener);
+        // 移除失效的listener
         removeFailedSubscribed(url, listener);
         try {
             // Sending a subscription request to the server side
+            // 进行订阅
             doSubscribe(url, listener);
         } catch (Exception e) {
             Throwable t = e;
@@ -354,6 +356,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     protected void notify(URL url, NotifyListener listener, List<URL> urls) {
+        // 参数校验
         if (url == null) {
             throw new IllegalArgumentException("notify url == null");
         }
@@ -361,6 +364,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             throw new IllegalArgumentException("notify listener == null");
         }
         try {
+            // 进行通知
             doNotify(url, listener, urls);
         } catch (Exception t) {
             // Record a failed registration request to a failed list, retry regularly
@@ -370,6 +374,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     }
 
     protected void doNotify(URL url, NotifyListener listener, List<URL> urls) {
+        // 调用父类方法
         super.notify(url, listener, urls);
     }
 

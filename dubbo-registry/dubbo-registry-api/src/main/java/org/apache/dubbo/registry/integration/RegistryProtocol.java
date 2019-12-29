@@ -127,6 +127,7 @@ public class RegistryProtocol implements Protocol {
     //To solve the problem of RMI repeated exposure port conflicts, the services that have been exposed are no longer exposed.
     //providerurl <--> exporter
     private final ConcurrentMap<String, ExporterChangeableWrapper<?>> bounds = new ConcurrentHashMap<>();
+    // 通过spi进行注入 自适应spi
     private Cluster cluster;
     private Protocol protocol;
     private RegistryFactory registryFactory;
@@ -273,7 +274,7 @@ public class RegistryProtocol implements Protocol {
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
             //  将 invoker 转换为 exporter 并启动 netty 服务
             // 这里的protocol并不是一个简单的DubboProtocol 
-            // DubboProtocol被包装了ProtocolFilterWrapper/ProtocolListenerWrapper/DubboProtocol
+            // DubboProtocol被包装了ProtocolListenerWrapper/ProtocolFilterWrapper/DubboProtocol
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
         });
     }
@@ -407,16 +408,20 @@ public class RegistryProtocol implements Protocol {
     @Override
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        // 组装url
+        // zookeeper://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-annotation-consumer&dubbo=2.0.2&pid=5164&refer=application%3Ddubbo-demo-annotation-consumer%26dubbo%3D2.0.2%26interface%3Dorg.apache.dubbo.demo.DemoService%26lazy%3Dfalse%26methods%3DsayHello%26pid%3D5164%26register.ip%3D192.168.2.119%26side%3Dconsumer%26sticky%3Dfalse%26timestamp%3D1577624294334&timestamp=1577624304040
         url = URLBuilder.from(url)
                 .setProtocol(url.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY))
                 .removeParameter(REGISTRY_KEY)
                 .build();
+        // registryFactory根据spi获得，此时为ZookeeperRegistryFactory，但是会从父类中获取对应registry
         Registry registry = registryFactory.getRegistry(url);
         if (RegistryService.class.equals(type)) {
             return proxyFactory.getInvoker((T) registry, type, url);
         }
 
         // group="a,b" or group="*"
+        // 解析group参数，根据group决定cluster类型
         Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(REFER_KEY));
         String group = qs.get(GROUP_KEY);
         if (group != null && group.length() > 0) {
@@ -424,6 +429,7 @@ public class RegistryProtocol implements Protocol {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
         }
+        // 实际操作方法
         return doRefer(cluster, registry, type, url);
     }
 
@@ -432,20 +438,29 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        // 构建RegistryDirectory
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
         directory.setRegistry(registry);
         directory.setProtocol(protocol);
         // all attributes of REFER_KEY
         Map<String, String> parameters = new HashMap<String, String>(directory.getUrl().getParameters());
+        // 构建消费者URL
+        // consumer://192.168.2.119/org.apache.dubbo.demo.DemoService?application=dubbo-demo-annotation-consumer&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=23732&side=consumer&sticky=false&timestamp=1577624792222
         URL subscribeUrl = new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);
+        // 注册消费者到zk上
         if (!ANY_VALUE.equals(url.getServiceInterface()) && url.getParameter(REGISTER_KEY, true)) {
             directory.setRegisteredConsumerUrl(getRegisteredConsumerUrl(subscribeUrl, url));
+            // 创建节点默认为 ZookeeperRegistry，但是会走其父类 FailbackRegistry
             registry.register(directory.getRegisteredConsumerUrl());
         }
+        // 构建路由链
         directory.buildRouterChain(subscribeUrl);
+        // 订阅事件监听 目标服务地址的发现
         directory.subscribe(subscribeUrl.addParameter(CATEGORY_KEY,
                 PROVIDERS_CATEGORY + "," + CONFIGURATORS_CATEGORY + "," + ROUTERS_CATEGORY));
-
+        
+        // 构建Invoker，注意cluster为自适应spi，默认为FailoverCluster，会进行包装MockClusterWrapper/FailoverCluster
+        // 所以这里的Invoker为MockClusterWrapper/FailoverCluster
         Invoker invoker = cluster.join(directory);
         ProviderConsumerRegTable.registerConsumer(invoker, url, subscribeUrl, directory);
         return invoker;

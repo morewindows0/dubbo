@@ -55,9 +55,9 @@ public class ProtocolListenerWrapper implements Protocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
-        // 责任链到此
+        // 发布服务会先到ProtocolFilterWrapper中来
+        // 注意责任链后续会走ProtocolListenerWrapper中去
         if (REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
-            // 最终到RegistryProtocol中
             return protocol.export(invoker);
         }
         return new ListenerExporterWrapper<T>(protocol.export(invoker),

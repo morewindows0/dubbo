@@ -172,6 +172,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 List<URL> urls = new ArrayList<>();
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
+                    // 如果之前该路径没有添加过listener，则创建一个map来放置listener
                     if (listeners == null) {
                         zkListeners.putIfAbsent(url, new ConcurrentHashMap<>());
                         listeners = zkListeners.get(url);
@@ -182,11 +183,13 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         zkListener = listeners.get(listener);
                     }
                     zkClient.create(path, false);
+                    // 添加path节点的当前节点及子节点监听，并且获取子节点信息
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
+                // 调用notify进行通知，对已经可用的列表进行通知
                 notify(url, listener, urls);
             }
         } catch (Throwable e) {

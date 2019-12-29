@@ -30,6 +30,7 @@ public abstract class AbstractDynamicConfigurationFactory implements DynamicConf
         if (dynamicConfiguration == null) {
             synchronized (this) {
                 if (dynamicConfiguration == null) {
+                    // 创建zk client
                     dynamicConfiguration = createDynamicConfiguration(url);
                 }
             }

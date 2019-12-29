@@ -125,9 +125,9 @@ public class ProtocolFilterWrapper implements Protocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
-        // 发布服务会先到ProtocolFilterWrapper中来
-        // 默认为registry，所以会走ProtocolListenerWrapper中去
+        // 默认为registry
         if (REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
+            // 最终到RegistryProtocol中
             return protocol.export(invoker);
         }
         return protocol.export(buildInvokerChain(invoker, SERVICE_FILTER_KEY, CommonConstants.PROVIDER));

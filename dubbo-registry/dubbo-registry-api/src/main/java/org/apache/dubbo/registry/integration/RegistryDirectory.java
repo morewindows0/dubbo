@@ -166,10 +166,19 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     }
 
     public void subscribe(URL url) {
+        // 设置consumerUrl
         setConsumerUrl(url);
+        // 把当前RegistryDirectory作为listener，去监听zk上节点的变化
         CONSUMER_CONFIGURATION_LISTENER.addNotifyListener(this);
         serviceConfigurationListener = new ReferenceConfigurationListener(this, url);
+        // 订阅 这里的registry是ZookeeperRegistry
         registry.subscribe(url, this);
+        /**
+         * 会监听如下节点：
+         * /dubbo/org.apache.dubbo.demo.DemoService/providers
+         * /dubbo/org.apache.dubbo.demo.DemoService/configurators
+         * /dubbo/org.apache.dubbo.demo.DemoService/routers
+         */
     }
 
 
@@ -207,6 +216,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     @Override
     public synchronized void notify(List<URL> urls) {
+        // 对url列表进行校验、过滤，然后分成 configurators、routers、providers 3个分组map
         Map<String, List<URL>> categoryUrls = urls.stream()
                 .filter(Objects::nonNull)
                 .filter(this::isValidCategory)
@@ -229,6 +239,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         toRouters(routerURLs).ifPresent(this::addRouters);
 
         // providers
+        //  获得provider URL，然后调用refreshOverrideAndInvoker进行刷新
         List<URL> providerURLs = categoryUrls.getOrDefault(PROVIDERS_CATEGORY, Collections.emptyList());
         refreshOverrideAndInvoker(providerURLs);
     }
@@ -277,6 +288,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokerUrls.isEmpty()) {
                 return;
             }
+            // 根据provider url，生成新的invoker
             Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
 
             /**

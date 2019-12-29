@@ -153,6 +153,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     private String protocol;
 
     /**
+     * 接口代理
      * The interface proxy reference
      */
     private transient volatile T ref;
@@ -241,12 +242,14 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     }
 
     public synchronized T get() {
+        // 检查更新配置
         checkAndUpdateSubConfigs();
 
         if (destroyed) {
             throw new IllegalStateException("The invoker of ReferenceConfig(" + url + ") has already destroyed!");
         }
         if (ref == null) {
+            // 初始化
             init();
         }
         return ref;
@@ -270,9 +273,11 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     }
 
     private void init() {
+        // 如果已经初始化，则返回
         if (initialized) {
             return;
         }
+        // 检查，并进行配置的加载
         checkStubAndLocal(interfaceClass);
         checkMock(interfaceClass);
         Map<String, String> map = new HashMap<String, String>();
@@ -325,7 +330,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             throw new IllegalArgumentException("Specified invalid registry ip from property:" + DUBBO_IP_TO_REGISTRY + ", value:" + hostToRegistry);
         }
         map.put(REGISTER_IP_KEY, hostToRegistry);
-
+        // 创建代理 重要方法
         ref = createProxy(map);
 
         String serviceKey = URL.buildKey(interfaceName, group, version);
@@ -349,6 +354,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
+        // 是否为本地调用
         if (shouldJvmRefer(map)) {
             URL url = new URL(LOCAL_PROTOCOL, LOCALHOST_VALUE, 0, interfaceClass.getName()).addParameters(map);
             invoker = REF_PROTOCOL.refer(interfaceClass, url);
@@ -357,6 +363,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
         } else {
             urls.clear(); // reference retry init will add url to urls, lead to OOM
+            // url不为空，则说明是点对点通信
             if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
@@ -372,13 +379,20 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                         }
                     }
                 }
-            } else { // assemble URL from register center's configuration
+            } else { 
+                // 从注册中心获取配置
+                // assemble URL from register center's configuration
                 // if protocols not injvm checkRegistry
+                // 不是injvm协议
                 if (!LOCAL_PROTOCOL.equalsIgnoreCase(getProtocol())){
+                    // 校验注册中心的配置以及是否有必要从配置中心组装url 这里会创建zk client
                     checkRegistry();
+                    // 根据配置获取url配置
                     List<URL> us = loadRegistries(false);
+                    // registry://192.168.2.114:2181/org.apache.dubbo.registry.RegistryService?application=dubbo-demo-annotation-consumer&dubbo=2.0.2&pid=408&registry=zookeeper&timestamp=1577622845460
                     if (CollectionUtils.isNotEmpty(us)) {
                         for (URL u : us) {
+                            // 监控中心相关
                             URL monitorUrl = loadMonitor(u);
                             if (monitorUrl != null) {
                                 map.put(MONITOR_KEY, URL.encode(monitorUrl.toFullString()));
@@ -391,8 +405,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                     }
                 }
             }
-
+            // 如果只配置了一个注册中心或者一个服务提供者，直接使用refprotocol.refer
             if (urls.size() == 1) {
+                // REF_PROTOCOL通过spi机制获得，这里会进行包装  责任链为ProtocolListenerWrapper/ProtocolFilterWrapper/RegistryProtocol
                 invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
@@ -430,6 +445,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             metadataReportService.publishConsumer(consumerURL);
         }
         // create service proxy
+        // PROXY_FACTORY为自适应 spi，默认为JavassistProxyFactory 但是会进行包装StubProxyFactoryWrapper/JavassistProxyFactory 
         return (T) PROXY_FACTORY.getProxy(invoker);
     }
 

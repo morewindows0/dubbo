@@ -50,12 +50,15 @@ public abstract class AbstractLoadBalance implements LoadBalance {
 
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) {
+        // 如果invokers为空，则直接返回
         if (CollectionUtils.isEmpty(invokers)) {
             return null;
         }
+        // 如果invokers只要一个，则无需进行负载均衡，直接返回即可
         if (invokers.size() == 1) {
             return invokers.get(0);
         }
+        // 调用负载均衡算法进行具体操作
         return doSelect(invokers, url, invocation);
     }
 
@@ -71,13 +74,22 @@ public abstract class AbstractLoadBalance implements LoadBalance {
      * @return weight
      */
     protected int getWeight(Invoker<?> invoker, Invocation invocation) {
+        // 默认权重为100
         int weight = invoker.getUrl().getMethodParameter(invocation.getMethodName(), WEIGHT_KEY, DEFAULT_WEIGHT);
         if (weight > 0) {
+            // 获取消费调者invoker的时间戳
             long timestamp = invoker.getUrl().getParameter(REMOTE_TIMESTAMP_KEY, 0L);
             if (timestamp > 0L) {
+                // 计算当前时间与启动invoker的时间差
                 int uptime = (int) (System.currentTimeMillis() - timestamp);
+                // 获取warmup的时间，默认为 10 * 60 * 1000 10分钟
                 int warmup = invoker.getUrl().getParameter(WARMUP_KEY, DEFAULT_WARMUP);
+                // 如果满足条件，则重新计算权重
                 if (uptime > 0 && uptime < warmup) {
+                    //  (uptime / warmup) * weight，即：(启动时长 / 预热时长) * 原权重值
+                    //  随着服务运行时间 uptime 增大，权重计算值 ww 会慢慢接近配置值 weight
+                    // 对服务进行预热，当启动时间小于服务预热时间时，对服务进行降权 也就是适当减少权重
+                    // 返回的权重值：1 ww和weight中较小值，也就是减小权重
                     weight = calculateWarmupWeight(uptime, warmup, weight);
                 }
             }

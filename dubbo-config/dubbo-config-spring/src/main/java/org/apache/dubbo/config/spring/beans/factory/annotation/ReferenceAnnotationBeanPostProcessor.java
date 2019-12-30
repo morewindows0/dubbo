@@ -152,6 +152,9 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
         return handler;
     }
 
+    /**
+     * 方法中被@Reference注入的对象，最外层为ReferenceBeanInvocationHandler包装
+     */
     private static class ReferenceBeanInvocationHandler implements InvocationHandler {
 
         private final ReferenceBean referenceBean;
@@ -170,6 +173,7 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
                     // issue: https://github.com/apache/dubbo/issues/3429
                     init();
                 }
+                // 进行方法调用的时候，最初是走此步骤，然后再到InvokerInvocationHandler中去
                 result = method.invoke(bean, args);
             } catch (InvocationTargetException e) {
                 // re-throws the actual Exception.

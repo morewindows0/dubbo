@@ -72,28 +72,35 @@ public class MockClusterInvoker<T> implements Invoker<T> {
     public Result invoke(Invocation invocation) throws RpcException {
         Result result = null;
 
+        // 是否配置了mock 默认为false
         String value = directory.getUrl().getMethodParameter(invocation.getMethodName(), MOCK_KEY, Boolean.FALSE.toString()).trim();
         if (value.length() == 0 || value.equalsIgnoreCase("false")) {
             //no mock
+            // 没有mock则进行远程调用
             result = this.invoker.invoke(invocation);
+        // 强制使用mock
         } else if (value.startsWith("force")) {
             if (logger.isWarnEnabled()) {
                 logger.warn("force-mock: " + invocation.getMethodName() + " force-mock enabled , url : " + directory.getUrl());
             }
             //force:direct mock
+            // 直接使用mock调用
             result = doMockInvoke(invocation, null);
         } else {
             //fail-mock
             try {
+                // 还是进行远程调用
                 result = this.invoker.invoke(invocation);
             } catch (RpcException e) {
+                // 异常情况下，业务异常，则直接抛出异常
                 if (e.isBiz()) {
                     throw e;
                 }
-
+     
                 if (logger.isWarnEnabled()) {
                     logger.warn("fail-mock: " + invocation.getMethodName() + " fail-mock enabled , url : " + directory.getUrl(), e);
                 }
+                // 如果远程调用出现异常，则使用Mock进行处理实现服务的降级
                 result = doMockInvoke(invocation, e);
             }
         }

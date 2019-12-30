@@ -462,7 +462,7 @@ public class RegistryProtocol implements Protocol {
                 PROVIDERS_CATEGORY + "," + CONFIGURATORS_CATEGORY + "," + ROUTERS_CATEGORY));
         
         // 构建Invoker，注意cluster为自适应spi，默认为FailoverCluster，会进行包装MockClusterWrapper/FailoverCluster
-        // 所以这里的Invoker为MockClusterWrapper/FailoverCluster
+        // 所以这里的Invoker为MockClusterWrapper/FailoverClusterInvoker/FailoverCluster
         Invoker invoker = cluster.join(directory);
         ProviderConsumerRegTable.registerConsumer(invoker, url, subscribeUrl, directory);
         return invoker;

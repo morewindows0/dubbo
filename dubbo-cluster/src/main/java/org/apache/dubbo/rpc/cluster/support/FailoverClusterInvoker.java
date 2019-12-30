@@ -44,6 +44,7 @@ import static org.apache.dubbo.rpc.cluster.Constants.RETRIES_KEY;
  * <a href="http://en.wikipedia.org/wiki/Failover">Failover</a>
  *
  */
+// 实现dubbo的容错
 public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(FailoverClusterInvoker.class);
@@ -55,10 +56,15 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Result doInvoke(Invocation invocation, final List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
+        // invokers是Provider 的一个可调用 Service 的抽象，Invoker封装了Provider地址及 Service 接口信息
         List<Invoker<T>> copyInvokers = invokers;
+        // 对invoker进行校验
         checkInvokers(copyInvokers, invocation);
         String methodName = RpcUtils.getMethodName(invocation);
+        // 默认重试次数为2次，注意这里加了1，所以总共会连接3次，一次正常连接 2次重试
+        // 如果设置为负数，则只连接1次
         int len = getUrl().getMethodParameter(methodName, RETRIES_KEY, DEFAULT_RETRIES) + 1;
+        // 如果retries设置为负数，则设置为1
         if (len <= 0) {
             len = 1;
         }
@@ -75,10 +81,13 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 // check again
                 checkInvokers(copyInvokers, invocation);
             }
+            // 通过负载均衡获得目标invoker
             Invoker<T> invoker = select(loadbalance, invocation, copyInvokers, invoked);
+            // 记录已经调用过的服务，下次调用会进行过滤
             invoked.add(invoker);
             RpcContext.getContext().setInvokers((List) invoked);
             try {
+                // 服务调用成功，直接返回结果
                 Result result = invoker.invoke(invocation);
                 if (le != null && logger.isWarnEnabled()) {
                     logger.warn("Although retry the method " + methodName
@@ -93,10 +102,11 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 }
                 return result;
             } catch (RpcException e) {
+                // 业务异常，则直接抛出异常
                 if (e.isBiz()) { // biz exception.
                     throw e;
                 }
-                le = e;
+                le = e; // 记录异常，进行下一次循环
             } catch (Throwable e) {
                 le = new RpcException(e.getMessage(), e);
             } finally {

@@ -119,12 +119,15 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
      */
     protected Invoker<T> select(LoadBalance loadbalance, Invocation invocation,
                                 List<Invoker<T>> invokers, List<Invoker<T>> selected) throws RpcException {
-
+        
+        // 如果invoker为空，则直接返回
         if (CollectionUtils.isEmpty(invokers)) {
             return null;
         }
+        // 获取方法名 sayHello
         String methodName = invocation == null ? StringUtils.EMPTY : invocation.getMethodName();
-
+        
+        // 是否粘连
         boolean sticky = invokers.get(0).getUrl()
                 .getMethodParameter(methodName, CLUSTER_STICKY_KEY, DEFAULT_CLUSTER_STICKY);
 
@@ -138,7 +141,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
                 return stickyInvoker;
             }
         }
-
+        // 实现负载均衡
         Invoker<T> invoker = doSelect(loadbalance, invocation, invokers, selected);
 
         if (sticky) {
@@ -149,16 +152,19 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
 
     private Invoker<T> doSelect(LoadBalance loadbalance, Invocation invocation,
                                 List<Invoker<T>> invokers, List<Invoker<T>> selected) throws RpcException {
-
+        // invokers就是一个DobboInvoker的包装对象
         if (CollectionUtils.isEmpty(invokers)) {
             return null;
         }
+        // 如果invokers只要一个，则无需进行负载均衡，直接返回即可
         if (invokers.size() == 1) {
             return invokers.get(0);
         }
+        // 进行负载均衡
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
+        // 判断invoker是否已经处理过，如果处理过则重新进行负载均衡
         if ((selected != null && selected.contains(invoker))
                 || (!invoker.isAvailable() && getUrl() != null && availablecheck)) {
             try {
@@ -234,15 +240,24 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
 
     @Override
     public Result invoke(final Invocation invocation) throws RpcException {
+        // 检查是否需要销毁
         checkWhetherDestroyed();
 
         // binding attachments into invocation.
+        // 获取在Invocation中的隐式参数
+        // 通过如下方式设置RpcContext.getContext().setAttachment("key","value");
         Map<String, String> contextAttachments = RpcContext.getContext().getAttachments();
         if (contextAttachments != null && contextAttachments.size() != 0) {
             ((RpcInvocation) invocation).addAttachments(contextAttachments);
         }
-
+        /**
+         * 通过list获得invoker列表，这个列表基本可以猜测到是从directory里面获得的、但是这里面还实现
+         * 了服务路由的逻辑，简单来说就是先拿到invoker列表，然后通过router进行服务路由，筛选出符
+         * 合路由规则的服务提供者
+         * 在RegistryDirectory中获取
+         */
         List<Invoker<T>> invokers = list(invocation);
+        // 获取负载均衡算法
         LoadBalance loadbalance = initLoadBalance(invokers, invocation);
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
         return doInvoke(invocation, invokers, loadbalance);
@@ -292,6 +307,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
      * @return LoadBalance instance. if not need init, return null.
      */
     protected LoadBalance initLoadBalance(List<Invoker<T>> invokers, Invocation invocation) {
+        // 通过静态spi扩展点获取，默认为random
         if (CollectionUtils.isNotEmpty(invokers)) {
             return ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(invokers.get(0).getUrl()
                     .getMethodParameter(RpcUtils.getMethodName(invocation), LOADBALANCE_KEY, DEFAULT_LOADBALANCE));

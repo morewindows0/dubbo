@@ -37,8 +37,10 @@ public class InvokerInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        // 获取方法名与方法参数类型
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
+        // 对常规方法的判断
         if (method.getDeclaringClass() == Object.class) {
             return method.invoke(invoker, args);
         }
@@ -51,7 +53,8 @@ public class InvokerInvocationHandler implements InvocationHandler {
         if ("equals".equals(methodName) && parameterTypes.length == 1) {
             return invoker.equals(args[0]);
         }
-
+        // 调用链为InvokerInvocationHandler/MockClusterWrapper/FailoverClusterInvoker/FailoverCluster/RegistryDirectory
+        // 将参数封装成RpcInvocation对象
         return invoker.invoke(new RpcInvocation(method, args)).recreate();
     }
 }

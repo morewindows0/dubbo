@@ -446,6 +446,8 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         }
         // create service proxy
         // PROXY_FACTORY为自适应 spi，默认为JavassistProxyFactory 但是会进行包装StubProxyFactoryWrapper/JavassistProxyFactory 
+        // 这里会生成一个warpper代理对象 具体内容参看：org.apache.dubbo.demo.consumer.ClientProxy
+        // 这里返回一个被包装的InvokerInvocationHandler(MockClusterWrapper(FailoverCluster(Registrydirectory)))
         return (T) PROXY_FACTORY.getProxy(invoker);
     }
 

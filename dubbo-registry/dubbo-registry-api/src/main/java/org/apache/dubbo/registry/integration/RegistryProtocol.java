@@ -438,7 +438,7 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
-        // 构建RegistryDirectory
+        // 构建RegistryDirectory 
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
         directory.setRegistry(registry);
         directory.setProtocol(protocol);
@@ -451,11 +451,13 @@ public class RegistryProtocol implements Protocol {
         if (!ANY_VALUE.equals(url.getServiceInterface()) && url.getParameter(REGISTER_KEY, true)) {
             directory.setRegisteredConsumerUrl(getRegisteredConsumerUrl(subscribeUrl, url));
             // 创建节点默认为 ZookeeperRegistry，但是会走其父类 FailbackRegistry
+            // 和服务端一样的逻辑，注册consumers节点
             registry.register(directory.getRegisteredConsumerUrl());
         }
         // 构建路由链
         directory.buildRouterChain(subscribeUrl);
-        // 订阅事件监听 目标服务地址的发现
+        // 订阅事件监听 目标服务地址的发现 
+        // 重要函数
         directory.subscribe(subscribeUrl.addParameter(CATEGORY_KEY,
                 PROVIDERS_CATEGORY + "," + CONFIGURATORS_CATEGORY + "," + ROUTERS_CATEGORY));
         

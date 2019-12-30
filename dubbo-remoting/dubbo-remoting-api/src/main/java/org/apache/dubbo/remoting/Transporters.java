@@ -64,6 +64,7 @@ public class Transporters {
     }
 
     public static Client connect(URL url, ChannelHandler... handlers) throws RemotingException {
+        // 参数校验
         if (url == null) {
             throw new IllegalArgumentException("url == null");
         }
@@ -73,8 +74,10 @@ public class Transporters {
         } else if (handlers.length == 1) {
             handler = handlers[0];
         } else {
+            // 如果handlers元素数量大于1 ，则创建ChannelHandler分发器
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // spi自适应 默认为NettyTransporter
         return getTransporter().connect(url, handler);
     }
 

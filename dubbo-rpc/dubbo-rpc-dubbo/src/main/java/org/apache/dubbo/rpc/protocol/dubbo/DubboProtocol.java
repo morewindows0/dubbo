@@ -420,9 +420,11 @@ public class DubboProtocol extends AbstractProtocol {
 
     @Override
     public <T> Invoker<T> protocolBindingRefer(Class<T> serviceType, URL url) throws RpcException {
+        // 序列化优化
         optimizeSerialization(url);
 
         // create rpc invoker.
+        // 创建rpc invoker
         DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
         invokers.add(invoker);
 
@@ -431,21 +433,24 @@ public class DubboProtocol extends AbstractProtocol {
 
     private ExchangeClient[] getClients(URL url) {
         // whether to share connection
-
+        // 决定是否共享连接
         boolean useShareConnect = false;
 
         int connections = url.getParameter(CONNECTIONS_KEY, 0);
         List<ReferenceCountExchangeClient> shareClients = null;
         // if not configured, connection is shared, otherwise, one connection for one service
+        // 如果未配置连接数，则为共享连接，默认为共享连接
         if (connections == 0) {
             useShareConnect = true;
 
             /**
              * The xml configuration should have a higher priority than properties.
              */
+            // 在此校验有多少连接数
             String shareConnectionsStr = url.getParameter(SHARE_CONNECTIONS_KEY, (String) null);
             connections = Integer.parseInt(StringUtils.isBlank(shareConnectionsStr) ? ConfigUtils.getProperty(SHARE_CONNECTIONS_KEY,
                     DEFAULT_SHARE_CONNECTIONS) : shareConnectionsStr);
+            // 默认就是1个连接，获取共享连接
             shareClients = getSharedClient(url, connections);
         }
 
@@ -469,33 +474,42 @@ public class DubboProtocol extends AbstractProtocol {
      * @param connectNum connectNum must be greater than or equal to 1
      */
     private List<ReferenceCountExchangeClient> getSharedClient(URL url, int connectNum) {
+        // 获取连接地址
         String key = url.getAddress();
         List<ReferenceCountExchangeClient> clients = referenceClientMap.get(key);
-
+        // 检查当前的key检查连接是否已经创建过并且可用，如果是，则直接返回并且增加连接的个数的统计
         if (checkClientCanUse(clients)) {
             batchClientRefIncr(clients);
             return clients;
         }
-
+        
+        // 如果连接未创建
         locks.putIfAbsent(key, new Object());
         synchronized (locks.get(key)) {
             clients = referenceClientMap.get(key);
             // dubbo check
+            // 再次检查，防止并发创建
             if (checkClientCanUse(clients)) {
                 batchClientRefIncr(clients);
                 return clients;
             }
 
             // connectNum must be greater than or equal to 1
+            // 连接数必须大于等于1
             connectNum = Math.max(connectNum, 1);
 
             // If the clients is empty, then the first initialization is
+            // 如果当前消费者还没有和服务端产生连接，则初始化
             if (CollectionUtils.isEmpty(clients)) {
+                // 构建netty连接
                 clients = buildReferenceCountExchangeClientList(url, connectNum);
+                // 缓存连接
                 referenceClientMap.put(key, clients);
 
             } else {
+                // 如果clients不为空，则进行遍历
                 for (int i = 0; i < clients.size(); i++) {
+                    // 通过遍历替换已经关闭或者为空的连接
                     ReferenceCountExchangeClient referenceCountExchangeClient = clients.get(i);
                     // If there is a client in the list that is no longer available, create a new one to replace him.
                     if (referenceCountExchangeClient == null || referenceCountExchangeClient.isClosed()) {
@@ -564,8 +578,10 @@ public class DubboProtocol extends AbstractProtocol {
      */
     private List<ReferenceCountExchangeClient> buildReferenceCountExchangeClientList(URL url, int connectNum) {
         List<ReferenceCountExchangeClient> clients = new ArrayList<>();
-
+        
+        // 默认connectNum为1 
         for (int i = 0; i < connectNum; i++) {
+            // 构建连接
             clients.add(buildReferenceCountExchangeClient(url));
         }
 
@@ -579,6 +595,7 @@ public class DubboProtocol extends AbstractProtocol {
      * @return
      */
     private ReferenceCountExchangeClient buildReferenceCountExchangeClient(URL url) {
+        // 初始化连接，也就是进行网络通信的连接
         ExchangeClient exchangeClient = initClient(url);
 
         return new ReferenceCountExchangeClient(exchangeClient);
@@ -592,13 +609,17 @@ public class DubboProtocol extends AbstractProtocol {
     private ExchangeClient initClient(URL url) {
 
         // client type setting.
+        // 获得连接类型
         String str = url.getParameter(CLIENT_KEY, url.getParameter(SERVER_KEY, DEFAULT_REMOTING_CLIENT));
-
+        
+        // 默认序列化方式
         url = url.addParameter(CODEC_KEY, DubboCodec.NAME);
         // enable heartbeat by default
+        // 设置心跳
         url = url.addParameterIfAbsent(HEARTBEAT_KEY, String.valueOf(DEFAULT_HEARTBEAT));
 
         // BIO is not allowed since it has severe performance issue.
+        // 判断连接类型是否在spi扩展点中
         if (str != null && str.length() > 0 && !ExtensionLoader.getExtensionLoader(Transporter.class).hasExtension(str)) {
             throw new RpcException("Unsupported client type: " + str + "," +
                     " supported client type is " + StringUtils.join(ExtensionLoader.getExtensionLoader(Transporter.class).getSupportedExtensions(), " "));
@@ -607,10 +628,12 @@ public class DubboProtocol extends AbstractProtocol {
         ExchangeClient client;
         try {
             // connection should be lazy
+            // 是否需要延迟创建连接，注意哦，这里的requestHandler是一个适配器
             if (url.getParameter(LAZY_CONNECT_KEY, false)) {
                 client = new LazyConnectExchangeClient(url, requestHandler);
 
             } else {
+                // 创建连接，终于走到这里了，默认为netty连接
                 client = Exchangers.connect(url, requestHandler);
             }
 

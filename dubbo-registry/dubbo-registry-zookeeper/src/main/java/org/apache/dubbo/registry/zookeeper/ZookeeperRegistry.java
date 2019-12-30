@@ -137,6 +137,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
     @Override
     public void doSubscribe(final URL url, final NotifyListener listener) {
         try {
+            // 任意接口 重点看else中逻辑
             if (ANY_VALUE.equals(url.getServiceInterface())) {
                 String root = toRootPath();
                 ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
@@ -170,6 +171,13 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 }
             } else {
                 List<URL> urls = new ArrayList<>();
+                // toCategoriesPath返回要监听的节点
+                /**
+                 * 默认为如下节点
+                 * /dubbo/org.apache.dubbo.demo.DemoService/providers
+                 * /dubbo/org.apache.dubbo.demo.DemoService/configurators
+                 * /dubbo/org.apache.dubbo.demo.DemoService/routers
+                 */
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                     // 如果之前该路径没有添加过listener，则创建一个map来放置listener
@@ -182,8 +190,10 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         listeners.putIfAbsent(listener, (parentPath, currentChilds) -> ZookeeperRegistry.this.notify(url, listener, toUrlsWithEmpty(url, parentPath, currentChilds)));
                         zkListener = listeners.get(listener);
                     }
+                    // 这里会创建上面所遍历的节点，猜测应该是为了防止服务端为创建，而在此创建的
+                    // 并且这些节点是持久节点
                     zkClient.create(path, false);
-                    // 添加path节点的当前节点及子节点监听，并且获取子节点信息
+                    // 添加path节点的当前节点及子节点监听，并且获取子节点信息，这里面利用curator实现watcher监听
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
@@ -255,12 +265,20 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     private String[] toCategoriesPath(URL url) {
         String[] categories;
+        // 如果是*，则返回四个目录路径
         if (ANY_VALUE.equals(url.getParameter(CATEGORY_KEY))) {
             categories = new String[]{PROVIDERS_CATEGORY, CONSUMERS_CATEGORY, ROUTERS_CATEGORY, CONFIGURATORS_CATEGORY};
         } else {
+            // 否则根据具体情况返回目录路径 默认为providers、configurators、routers
             categories = url.getParameter(CATEGORY_KEY, new String[]{DEFAULT_CATEGORY});
         }
         String[] paths = new String[categories.length];
+        // 循环遍历加上具体路径
+        /**
+         * /dubbo/org.apache.dubbo.demo.DemoService/providers
+         * /dubbo/org.apache.dubbo.demo.DemoService/configurators
+         * /dubbo/org.apache.dubbo.demo.DemoService/routers
+         */
         for (int i = 0; i < categories.length; i++) {
             paths[i] = toServicePath(url) + PATH_SEPARATOR + categories[i];
         }

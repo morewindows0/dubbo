@@ -292,12 +292,13 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void subscribe(URL url, NotifyListener listener) {
+        // 加入监听集合
         super.subscribe(url, listener);
         // 移除失效的listener
         removeFailedSubscribed(url, listener);
         try {
             // Sending a subscription request to the server side
-            // 进行订阅
+            // 进行订阅 子类中完成
             doSubscribe(url, listener);
         } catch (Exception e) {
             Throwable t = e;
@@ -322,6 +323,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             }
 
             // Record a failed registration request to a failed list, retry regularly
+            // 记录失败元素
             addFailedSubscribed(url, listener);
         }
     }

@@ -168,10 +168,11 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     public void subscribe(URL url) {
         // 设置consumerUrl
         setConsumerUrl(url);
-        // 把当前RegistryDirectory作为listener，去监听zk上节点的变化
+        // 把当前RegistryDirectory添加到监听集合中
         CONSUMER_CONFIGURATION_LISTENER.addNotifyListener(this);
+        // 构建ReferenceConfigurationListener对象
         serviceConfigurationListener = new ReferenceConfigurationListener(this, url);
-        // 订阅 这里的registry是ZookeeperRegistry
+        // 订阅 这里的registry是ZookeeperRegistry 会到父类FailBackRegistry中去
         registry.subscribe(url, this);
         /**
          * 会监听如下节点：
@@ -431,7 +432,10 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     } else {
                         enabled = url.getParameter(ENABLED_KEY, true);
                     }
+                    // enabled为true
                     if (enabled) {
+                        // 进行invoker的创建，比较重要，这里又是spi自适应扩展点，会进行封装
+                        // ProtocolListenerWrapper/ProtocolFilterWrapper/DubboProtocol 调用refer方法回去父类中调用
                         invoker = new InvokerDelegate<>(protocol.refer(serviceType, url), url, providerUrl);
                     }
                 } catch (Throwable t) {

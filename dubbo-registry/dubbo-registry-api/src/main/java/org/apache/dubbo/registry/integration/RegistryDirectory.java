@@ -232,22 +232,26 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     }
                     return "";
                 }));
-
+        
+        // 如果configurators路由节点有变化，则从新将router 下的数据生成router
         List<URL> configuratorURLs = categoryUrls.getOrDefault(CONFIGURATORS_CATEGORY, Collections.emptyList());
         this.configurators = Configurator.toConfigurators(configuratorURLs).orElse(this.configurators);
-
+        
+        // 如果routers路由节点有变化，则从新将router 下的数据生成router
         List<URL> routerURLs = categoryUrls.getOrDefault(ROUTERS_CATEGORY, Collections.emptyList());
         toRouters(routerURLs).ifPresent(this::addRouters);
 
         // providers
-        //  获得provider URL，然后调用refreshOverrideAndInvoker进行刷新
+        //  获得providers URL，然后调用refreshOverrideAndInvoker进行刷新
         List<URL> providerURLs = categoryUrls.getOrDefault(PROVIDERS_CATEGORY, Collections.emptyList());
         refreshOverrideAndInvoker(providerURLs);
     }
 
     private void refreshOverrideAndInvoker(List<URL> urls) {
         // mock zookeeper://xxx?mock=return null
+        // 覆盖url
         overrideDirectoryUrl();
+        // 刷新refreshInvoker
         refreshInvoker(urls);
     }
 
@@ -266,7 +270,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     // TODO: 2017/8/31 FIXME The thread pool should be used to refresh the address, otherwise the task may be accumulated.
     private void refreshInvoker(List<URL> invokerUrls) {
         Assert.notNull(invokerUrls, "invokerUrls should not be null");
-
+        
+        // 如果协议为empty，则关闭所有的invokers，直接返回不允许访问
         if (invokerUrls.size() == 1
                 && invokerUrls.get(0) != null
                 && EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
@@ -276,6 +281,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             destroyAllInvokers(); // Close all invokers
         } else {
             this.forbidden = false; // Allow to access
+            // 进行参数的校验
             Map<String, Invoker<T>> oldUrlInvokerMap = this.urlInvokerMap; // local reference
             if (invokerUrls == Collections.<URL>emptyList()) {
                 invokerUrls = new ArrayList<>();
@@ -289,7 +295,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokerUrls.isEmpty()) {
                 return;
             }
-            // 根据provider url，生成新的invoker
+            // 根据provider url，生成新的invoker 这里比较重要，会建立与服务端的连接
             Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
 
             /**
@@ -310,10 +316,12 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             // pre-route and build cache, notice that route cache should build on original Invoker list.
             // toMergeMethodInvokerMap() will wrap some invokers having different groups, those wrapped invokers not should be routed.
             routerChain.setInvokers(newInvokers);
+            // 如果服务配置了分组，则把分组下的provider包装成StaticDirectory，组成一个invoker
             this.invokers = multiGroup ? toMergeInvokerList(newInvokers) : newInvokers;
             this.urlInvokerMap = newUrlInvokerMap;
 
             try {
+                // 旧的url是否在新map里面存在，不存在，就是销毁url对应的Invoker
                 destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap); // Close the unused Invoker
             } catch (Exception e) {
                 logger.warn("destroyUnusedInvokers error. ", e);
@@ -384,11 +392,13 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      */
     private Map<String, Invoker<T>> toInvokers(List<URL> urls) {
         Map<String, Invoker<T>> newUrlInvokerMap = new HashMap<>();
+        // 判空校验
         if (urls == null || urls.isEmpty()) {
             return newUrlInvokerMap;
         }
         Set<String> keys = new HashSet<>();
         String queryProtocols = this.queryMap.get(PROTOCOL_KEY);
+        // 遍历urls
         for (URL providerUrl : urls) {
             // If protocol is configured at the reference side, only the matching protocol is selected
             if (queryProtocols != null && queryProtocols.length() > 0) {
@@ -432,6 +442,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     } else {
                         enabled = url.getParameter(ENABLED_KEY, true);
                     }
+                    // 前面进行了一系列的参数校验
                     // enabled为true
                     if (enabled) {
                         // 进行invoker的创建，比较重要，这里又是spi自适应扩展点，会进行封装

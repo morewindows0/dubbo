@@ -119,8 +119,8 @@ public class DubboProtocol extends AbstractProtocol {
 
             if (!(message instanceof Invocation)) {
                 throw new RemotingException(channel, "Unsupported request: "
-                        + (message == null ? null : (message.getClass().getName() + ": " + message))
-                        + ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress());
+                                                     + (message == null ? null : (message.getClass().getName() + ": " + message))
+                                                     + ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress());
             }
 
             Invocation inv = (Invocation) message;
@@ -142,9 +142,9 @@ public class DubboProtocol extends AbstractProtocol {
                 }
                 if (!hasMethod) {
                     logger.warn(new IllegalStateException("The methodName " + inv.getMethodName()
-                            + " not found in callback service interface ,invoke will be ignored."
-                            + " please update the api interface. url is:"
-                            + invoker.getUrl()) + " ,invocation is :" + inv);
+                                                          + " not found in callback service interface ,invoke will be ignored."
+                                                          + " please update the api interface. url is:"
+                                                          + invoker.getUrl()) + " ,invocation is :" + inv);
                     return null;
                 }
             }
@@ -235,8 +235,8 @@ public class DubboProtocol extends AbstractProtocol {
         InetSocketAddress address = channel.getRemoteAddress();
         URL url = channel.getUrl();
         return url.getPort() == address.getPort() &&
-                NetUtils.filterLocalHost(channel.getUrl().getIp())
-                        .equals(NetUtils.filterLocalHost(address.getAddress().getHostAddress()));
+               NetUtils.filterLocalHost(channel.getUrl().getIp())
+                       .equals(NetUtils.filterLocalHost(address.getAddress().getHostAddress()));
     }
 
     Invoker<?> getInvoker(Channel channel, Invocation inv) throws RemotingException {
@@ -263,7 +263,7 @@ public class DubboProtocol extends AbstractProtocol {
 
         if (exporter == null) {
             throw new RemotingException(channel, "Not found exported service: " + serviceKey + " in " + exporterMap.keySet() + ", may be version or group mismatch " +
-                    ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress() + ", message:" + inv);
+                                                 ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress() + ", message:" + inv);
         }
 
         return exporter.getInvoker();
@@ -303,14 +303,14 @@ public class DubboProtocol extends AbstractProtocol {
             if (stubServiceMethods == null || stubServiceMethods.length() == 0) {
                 if (logger.isWarnEnabled()) {
                     logger.warn(new IllegalStateException("consumer [" + url.getParameter(INTERFACE_KEY) +
-                            "], has set stubproxy support event ,but no stub methods founded."));
+                                                          "], has set stubproxy support event ,but no stub methods founded."));
                 }
 
             } else {
                 stubServiceMethodsMap.put(url.getServiceKey(), stubServiceMethods);
             }
         }
-        
+
         // 启动服务
         openServer(url);
         // 优化序列化
@@ -348,20 +348,20 @@ public class DubboProtocol extends AbstractProtocol {
     private ExchangeServer createServer(URL url) {
         // 组装url，在url中添加心跳、编码长寿
         url = URLBuilder.from(url)
-                // send readonly event when server closes, it's enabled by default
+                        // send readonly event when server closes, it's enabled by default
                         // 当服务关闭后发生一个只读事件，默认开启状态
-                .addParameterIfAbsent(CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString())
-                // enable heartbeat by default 启动心跳配置
-                .addParameterIfAbsent(HEARTBEAT_KEY, String.valueOf(DEFAULT_HEARTBEAT))
-                .addParameter(CODEC_KEY, DubboCodec.NAME)
-                .build();
+                        .addParameterIfAbsent(CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString())
+                        // enable heartbeat by default 启动心跳配置
+                        .addParameterIfAbsent(HEARTBEAT_KEY, String.valueOf(DEFAULT_HEARTBEAT))
+                        .addParameter(CODEC_KEY, DubboCodec.NAME)
+                        .build();
         // 获取server参数，默认为netty
         String str = url.getParameter(SERVER_KEY, DEFAULT_REMOTING_SERVER);
         // 通过 SPI 检测是否存在 server 参数所代表的 Transporter 拓展，不存在则抛出异常 
         if (str != null && str.length() > 0 && !ExtensionLoader.getExtensionLoader(Transporter.class).hasExtension(str)) {
             throw new RpcException("Unsupported server type: " + str + ", url: " + url);
         }
-        
+
         // 创建ExchangeServer
         ExchangeServer server;
         try {
@@ -424,13 +424,20 @@ public class DubboProtocol extends AbstractProtocol {
         optimizeSerialization(url);
 
         // create rpc invoker.
-        // 创建rpc invoker
+        // 创建rpc invoker 通过getClients获取客户端的连接
         DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
         invokers.add(invoker);
 
         return invoker;
     }
 
+    /**
+     * 判断是否为共享连接，默认是共享同一个连接进行通信
+     * 是否配置了多个连接通道 connections，默认只有一个
+     *
+     * @param url
+     * @return
+     */
     private ExchangeClient[] getClients(URL url) {
         // whether to share connection
         // 决定是否共享连接
@@ -449,11 +456,12 @@ public class DubboProtocol extends AbstractProtocol {
             // 在此校验有多少连接数
             String shareConnectionsStr = url.getParameter(SHARE_CONNECTIONS_KEY, (String) null);
             connections = Integer.parseInt(StringUtils.isBlank(shareConnectionsStr) ? ConfigUtils.getProperty(SHARE_CONNECTIONS_KEY,
-                    DEFAULT_SHARE_CONNECTIONS) : shareConnectionsStr);
+                                                                                                              DEFAULT_SHARE_CONNECTIONS) : shareConnectionsStr);
             // 默认就是1个连接，获取共享连接
             shareClients = getSharedClient(url, connections);
         }
 
+        // 针对连接数，判断是否需要进行连接的初始化
         ExchangeClient[] clients = new ExchangeClient[connections];
         for (int i = 0; i < clients.length; i++) {
             if (useShareConnect) {
@@ -482,7 +490,7 @@ public class DubboProtocol extends AbstractProtocol {
             batchClientRefIncr(clients);
             return clients;
         }
-        
+
         // 如果连接未创建
         locks.putIfAbsent(key, new Object());
         synchronized (locks.get(key)) {
@@ -578,7 +586,7 @@ public class DubboProtocol extends AbstractProtocol {
      */
     private List<ReferenceCountExchangeClient> buildReferenceCountExchangeClientList(URL url, int connectNum) {
         List<ReferenceCountExchangeClient> clients = new ArrayList<>();
-        
+
         // 默认connectNum为1 
         for (int i = 0; i < connectNum; i++) {
             // 构建连接
@@ -611,7 +619,7 @@ public class DubboProtocol extends AbstractProtocol {
         // client type setting.
         // 获得连接类型
         String str = url.getParameter(CLIENT_KEY, url.getParameter(SERVER_KEY, DEFAULT_REMOTING_CLIENT));
-        
+
         // 默认序列化方式
         url = url.addParameter(CODEC_KEY, DubboCodec.NAME);
         // enable heartbeat by default
@@ -622,13 +630,13 @@ public class DubboProtocol extends AbstractProtocol {
         // 判断连接类型是否在spi扩展点中
         if (str != null && str.length() > 0 && !ExtensionLoader.getExtensionLoader(Transporter.class).hasExtension(str)) {
             throw new RpcException("Unsupported client type: " + str + "," +
-                    " supported client type is " + StringUtils.join(ExtensionLoader.getExtensionLoader(Transporter.class).getSupportedExtensions(), " "));
+                                   " supported client type is " + StringUtils.join(ExtensionLoader.getExtensionLoader(Transporter.class).getSupportedExtensions(), " "));
         }
 
         ExchangeClient client;
         try {
             // connection should be lazy
-            // 是否需要延迟创建连接，注意哦，这里的requestHandler是一个适配器
+            // 是否需要延迟创建连接，注意这里的requestHandler是一个适配器
             if (url.getParameter(LAZY_CONNECT_KEY, false)) {
                 client = new LazyConnectExchangeClient(url, requestHandler);
 

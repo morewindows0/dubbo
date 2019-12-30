@@ -199,7 +199,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
-                // 调用notify进行通知，对已经可用的列表进行通知
+                // 调用notify进行通知，对已经可用的列表进行通知 其实就是实现对象Invoker的创建
                 notify(url, listener, urls);
             }
         } catch (Throwable e) {

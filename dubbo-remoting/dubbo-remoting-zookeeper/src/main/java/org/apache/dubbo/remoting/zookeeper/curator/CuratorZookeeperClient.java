@@ -63,9 +63,9 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         try {
             int timeout = url.getParameter(TIMEOUT_KEY, 5000);
             CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder()
-                    .connectString(url.getBackupAddress())
-                    .retryPolicy(new RetryNTimes(1, 1000))
-                    .connectionTimeoutMs(timeout);
+                                                                             .connectString(url.getBackupAddress())
+                                                                             .retryPolicy(new RetryNTimes(1, 1000))
+                                                                             .connectionTimeoutMs(timeout);
             String authority = url.getAuthority();
             if (authority != null && authority.length() > 0) {
                 builder = builder.authorization("digest", authority.getBytes());
@@ -280,12 +280,13 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
             if (childListener != null) {
                 String path = event.getPath() == null ? "" : event.getPath();
                 childListener.childChanged(path,
-                        // if path is null, curator using watcher will throw NullPointerException.
-                        // if client connect or disconnect to server, zookeeper will queue
-                        // watched event(Watcher.Event.EventType.None, .., path = null).
-                        StringUtils.isNotEmpty(path)
-                                ? client.getChildren().usingWatcher(this).forPath(path)
-                                : Collections.<String>emptyList());
+                                           // if path is null, curator using watcher will throw NullPointerException.
+                                           // if client connect or disconnect to server, zookeeper will queue
+                                           // watched event(Watcher.Event.EventType.None, .., path = null).
+                                           // 实现循环监听 
+                                           StringUtils.isNotEmpty(path)
+                                           ? client.getChildren().usingWatcher(this).forPath(path)
+                                           : Collections.<String>emptyList());
             }
         }
 

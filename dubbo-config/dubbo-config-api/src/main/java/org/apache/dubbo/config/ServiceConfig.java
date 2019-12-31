@@ -650,7 +650,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         // 发布这个代理 export是一个方法层面的自适应扩展，通过protocol注释可知，此时的协议为registry，因此会通过RegistryProtocol
                         // protocol自适应扩展点，会通过Protocol$Adaptive字节码进行调用，根据url中的协议来实现对协议的适配
                         // 此时Invoker中协议为registry
-                        // ProtocolListenerWrapper/ProtocolFilterWrapper/RegistryProtocol
+                        // ProtocolFilterWrapper/ProtocolListenerWrapper/RegistryProtocol 此时protocol为registry，透传
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         // 添加到发布集合中
                         exporters.add(exporter);

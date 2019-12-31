@@ -407,7 +407,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
             // 如果只配置了一个注册中心或者一个服务提供者，直接使用refprotocol.refer
             if (urls.size() == 1) {
-                // REF_PROTOCOL通过spi机制获得，这里会进行包装  责任链为ProtocolListenerWrapper/ProtocolFilterWrapper/RegistryProtocol
+                // REF_PROTOCOL通过spi机制获得，这里会进行包装  责任链为ProtocolFilterWrapper/ProtocolListenerWrapper/RegistryProtocol
                 invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();

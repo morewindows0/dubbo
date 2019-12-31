@@ -109,6 +109,9 @@ public class ExtensionLoader<T> {
     private String cachedDefaultName;
     private volatile Throwable createAdaptiveInstanceError;
 
+    /**
+     * 注意为ConcurrentHashMap，所以不一定是加入顺序，要看hashCode
+     */
     private Set<Class<?>> cachedWrapperClasses;
 
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<>();
@@ -574,9 +577,9 @@ public class ExtensionLoader<T> {
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             /**
              * 以org.apache.dubbo.rpc.Protocol为例 wrapperClasses中存在filter和listener，进行包装
-             * ProtocolListenerWrapper/ProtocolFilterWrapper/RegistryProtocol 形成链
+             * ProtocolFilterWrapper/ProtocolListenerWrapper/RegistryProtocol 形成链
              */
-            // 注意wrapperClasses中的顺序：filter->listener
+            // 注意wrapperClasses中的顺序是不一定的，但是这并不影响链路的调用，反正最终都会走到对应的对象上去
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     // 实例化对象 这里可能会对实例进行包装，形成一个链

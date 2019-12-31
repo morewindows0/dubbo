@@ -116,16 +116,20 @@ public class DubboProtocol extends AbstractProtocol {
 
         @Override
         public CompletableFuture<Object> reply(ExchangeChannel channel, Object message) throws RemotingException {
-
+            // 如果消息不是 invocation则抛出异常
             if (!(message instanceof Invocation)) {
                 throw new RemotingException(channel, "Unsupported request: "
                                                      + (message == null ? null : (message.getClass().getName() + ": " + message))
                                                      + ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress());
             }
 
+            // 就是RpcInvocation的值
             Invocation inv = (Invocation) message;
+            // 获取对应的invoker
+            // 之前发布服务的时候  DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
             Invoker<?> invoker = getInvoker(channel, inv);
             // need to consider backward-compatibility if it's a callback
+            // 是否有回调
             if (Boolean.TRUE.toString().equals(inv.getAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
                 String methodsStr = invoker.getUrl().getParameters().get("methods");
                 boolean hasMethod = false;
@@ -149,6 +153,8 @@ public class DubboProtocol extends AbstractProtocol {
                 }
             }
             RpcContext.getContext().setRemoteAddress(channel.getRemoteAddress());
+            // 进行调用 会走到生成的动态代理类中去
+            // 调用链 ProtocolFilterWrapper/RegistryProtocol/DelegateProviderMetaDataInvoker/JavassistProxyFactory/AbstractProxyInvoker
             Result result = invoker.invoke(inv);
             return result.completionFuture().thenApply(Function.identity());
         }
@@ -242,7 +248,9 @@ public class DubboProtocol extends AbstractProtocol {
     Invoker<?> getInvoker(Channel channel, Invocation inv) throws RemotingException {
         boolean isCallBackServiceInvoke = false;
         boolean isStubServiceInvoke = false;
+        // 获取请求端口
         int port = channel.getLocalAddress().getPort();
+        // 请求path org.apache.dubbo.demo.DemoService
         String path = inv.getAttachments().get(PATH_KEY);
 
         // if it's callback service on client side
@@ -257,15 +265,18 @@ public class DubboProtocol extends AbstractProtocol {
             path += "." + inv.getAttachments().get(CALLBACK_SERVICE_KEY);
             inv.getAttachments().put(IS_CALLBACK_SERVICE_INVOKE, Boolean.TRUE.toString());
         }
-
+        
+        // 创建key，从map中获取对象
         String serviceKey = serviceKey(port, path, inv.getAttachments().get(VERSION_KEY), inv.getAttachments().get(GROUP_KEY));
         DubboExporter<?> exporter = (DubboExporter<?>) exporterMap.get(serviceKey);
-
+        
+        // 为空，则抛出异常
         if (exporter == null) {
             throw new RemotingException(channel, "Not found exported service: " + serviceKey + " in " + exporterMap.keySet() + ", may be version or group mismatch " +
                                                  ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress() + ", message:" + inv);
         }
-
+        
+        // 返回invoker对象
         return exporter.getInvoker();
     }
 

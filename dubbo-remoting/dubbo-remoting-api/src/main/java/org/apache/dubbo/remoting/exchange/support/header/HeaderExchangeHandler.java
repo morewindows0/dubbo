@@ -78,6 +78,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
     }
 
     void handleRequest(final ExchangeChannel channel, Request req) throws RemotingException {
+        // 创建响应数据
         Response res = new Response(req.getId(), req.getVersion());
         if (req.isBroken()) {
             Object data = req.getData();
@@ -97,8 +98,10 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
             return;
         }
         // find handler by message class.
+        // 获取请求数据
         Object msg = req.getData();
         try {
+            // 调用reply方法进行处理
             CompletionStage<Object> future = handler.reply(channel, msg);
             future.whenComplete((appResult, t) -> {
                 try {
@@ -180,24 +183,31 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+       // 设置读取消息时间戳
         channel.setAttribute(KEY_READ_TIMESTAMP, System.currentTimeMillis());
         final ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
         try {
+            // 处理客户端请求
             if (message instanceof Request) {
                 // handle request.
                 Request request = (Request) message;
                 if (request.isEvent()) {
                     handlerEvent(channel, request);
                 } else {
+                    // 双向请求，默认双向
                     if (request.isTwoWay()) {
                         handleRequest(exchangeChannel, request);
                     } else {
+                        // 单向请求
                         handler.received(exchangeChannel, request.getData());
                     }
                 }
+            // 处理响应    
             } else if (message instanceof Response) {
                 handleResponse(channel, (Response) message);
-            } else if (message instanceof String) {
+            }
+            // 处理注入ping telnet类的消息
+            else if (message instanceof String) {
                 if (isClientSide(channel)) {
                     Exception e = new Exception("Dubbo client can not supported string message: " + message + " in channel: " + channel + ", url: " + channel.getUrl());
                     logger.error(e.getMessage(), e);

@@ -130,6 +130,7 @@ public class ProtocolFilterWrapper implements Protocol {
             // 最终到RegistryProtocol中
             return protocol.export(invoker);
         }
+        // 如果不是registry协议，就会对invoker进行包装，否则进行透传
         return protocol.export(buildInvokerChain(invoker, SERVICE_FILTER_KEY, CommonConstants.PROVIDER));
     }
 

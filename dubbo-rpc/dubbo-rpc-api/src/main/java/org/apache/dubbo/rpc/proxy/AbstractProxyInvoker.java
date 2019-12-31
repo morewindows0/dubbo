@@ -81,6 +81,7 @@ public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
     @Override
     public Result invoke(Invocation invocation) throws RpcException {
         try {
+            // 这里执行doInvoke方法，会调用JavassistProxyFactory创建的动态代理对象，从而结束流程
             Object value = doInvoke(proxy, invocation.getMethodName(), invocation.getParameterTypes(), invocation.getArguments());
             CompletableFuture<Object> future = wrapWithFuture(value, invocation);
             AsyncRpcResult asyncRpcResult = new AsyncRpcResult(invocation);

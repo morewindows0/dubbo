@@ -605,7 +605,7 @@ public class DubboProtocol extends AbstractProtocol {
     private ReferenceCountExchangeClient buildReferenceCountExchangeClient(URL url) {
         // 初始化连接，也就是进行网络通信的连接
         ExchangeClient exchangeClient = initClient(url);
-
+        // 最终形成的包装链是ReferenceCountExchangeClient->HeaderExchangeClient->HeaderExchangeChannel
         return new ReferenceCountExchangeClient(exchangeClient);
     }
 

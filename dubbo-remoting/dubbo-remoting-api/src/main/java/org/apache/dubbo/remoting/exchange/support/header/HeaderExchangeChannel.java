@@ -105,16 +105,20 @@ final class HeaderExchangeChannel implements ExchangeChannel {
 
     @Override
     public CompletableFuture<Object> request(Object request, int timeout) throws RemotingException {
+        // 如果连接已经关闭，则抛出异常
         if (closed) {
             throw new RemotingException(this.getLocalAddress(), null, "Failed to send request " + request + ", cause: The channel " + this + " is closed!");
         }
         // create request.
+        // 创建请求包
         Request req = new Request();
         req.setVersion(Version.getProtocolVersion());
+        // two方式
         req.setTwoWay(true);
         req.setData(request);
         DefaultFuture future = DefaultFuture.newFuture(channel, req, timeout);
         try {
+            // 通过NettyClient进行数据发送
             channel.send(req);
         } catch (RemotingException e) {
             future.cancel();

@@ -95,11 +95,13 @@ final class NettyChannel extends AbstractChannel {
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
+        // 父类中判断连接是否关闭
         super.send(message, sent);
 
         boolean success = true;
         int timeout = 0;
         try {
+            // 发送数据
             ChannelFuture future = channel.writeAndFlush(message);
             if (sent) {
                 timeout = getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);

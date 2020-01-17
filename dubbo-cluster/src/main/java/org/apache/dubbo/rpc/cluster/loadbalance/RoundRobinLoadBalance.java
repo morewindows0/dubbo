@@ -86,6 +86,7 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
     
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
+        // key=全限定类名+"."+方法名 com.xxx.xxx.sayHello
         String key = invokers.get(0).getUrl().getServiceKey() + "." + invocation.getMethodName();
         ConcurrentMap<String, WeightedRoundRobin> map = methodWeightMap.get(key);
         if (map == null) {
@@ -97,9 +98,11 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
         long now = System.currentTimeMillis();
         Invoker<T> selectedInvoker = null;
         WeightedRoundRobin selectedWRR = null;
+        // 遍历invoker
         for (Invoker<T> invoker : invokers) {
             String identifyString = invoker.getUrl().toIdentityString();
             WeightedRoundRobin weightedRoundRobin = map.get(identifyString);
+            // 获取权重
             int weight = getWeight(invoker, invocation);
 
             if (weightedRoundRobin == null) {
@@ -107,26 +110,35 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
                 weightedRoundRobin.setWeight(weight);
                 map.putIfAbsent(identifyString, weightedRoundRobin);
             }
+            // 权重变化
             if (weight != weightedRoundRobin.getWeight()) {
                 //weight changed
                 weightedRoundRobin.setWeight(weight);
             }
+            // 让 current 加上自身权重，等价于 current += weight
             long cur = weightedRoundRobin.increaseCurrent();
             weightedRoundRobin.setLastUpdate(now);
+            // 找出最大权重
             if (cur > maxCurrent) {
                 maxCurrent = cur;
                 selectedInvoker = invoker;
                 selectedWRR = weightedRoundRobin;
             }
+            // 权重总和
             totalWeight += weight;
         }
+        // 对 <identifyString, WeightedRoundRobin> 进行检查，过滤掉长时间未被更新的节点。
+        // 该节点可能挂了，invokers 中不包含该节点，所以该节点的 lastUpdate 长时间无法被更新。
+        // 若未更新时长超过阈值后，就会被移除掉，默认阈值为60秒。
         if (!updateLock.get() && invokers.size() != map.size()) {
             if (updateLock.compareAndSet(false, true)) {
                 try {
                     // copy -> modify -> update reference
                     ConcurrentMap<String, WeightedRoundRobin> newMap = new ConcurrentHashMap<String, WeightedRoundRobin>();
+                    // 拷贝
                     newMap.putAll(map);
                     Iterator<Entry<String, WeightedRoundRobin>> it = newMap.entrySet().iterator();
+                    // 遍历修改，即移除过期记录
                     while (it.hasNext()) {
                         Entry<String, WeightedRoundRobin> item = it.next();
                         if (now - item.getValue().getLastUpdate() > RECYCLE_PERIOD) {
@@ -140,6 +152,7 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
             }
         }
         if (selectedInvoker != null) {
+            // 让 current 减去权重总和，等价于 current -= totalWeight
             selectedWRR.sel(totalWeight);
             return selectedInvoker;
         }

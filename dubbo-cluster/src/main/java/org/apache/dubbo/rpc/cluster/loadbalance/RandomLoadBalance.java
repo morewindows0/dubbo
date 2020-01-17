@@ -54,7 +54,7 @@ public class RandomLoadBalance extends AbstractLoadBalance {
             // Sum
             // 计算权重总和
             totalWeight += weight;
-            // 判断与第一个服务的权重是否相同
+            // 判断与权重是否相同
             if (sameWeight && weight != firstWeight) {
                 sameWeight = false;
             }

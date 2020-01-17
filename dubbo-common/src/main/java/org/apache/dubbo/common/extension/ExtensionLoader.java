@@ -918,7 +918,7 @@ public class ExtensionLoader<T> {
 
     private Class<?> getAdaptiveExtensionClass() {
         getExtensionClasses();
-        // 在getExtensionClasses函数中如果存在@Adaptive注解的对象，则进行缓存
+        // 在getExtensionClasses函数中如果存在@Adaptive注解的对象(类上有该注解)，则进行缓存
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }

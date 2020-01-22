@@ -121,7 +121,7 @@ public class ReferenceAnnotationBeanPostProcessor extends AnnotationInjectedBean
         // 缓存构建的<dubbo:reference/>
         cacheInjectedReferenceBean(referenceBean, injectedElement);
         
-        // 构建代理 服务消费入口
+        // 构建代理 服务的消费入口
         return buildProxy(referencedBeanName, referenceBean, injectedType);
     }
 
